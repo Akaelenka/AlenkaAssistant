@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace AlenkaAssistant.Scripts.Models
+namespace AlenkaAssistant.Models
 {
     public enum DoctorName
     {

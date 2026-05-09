@@ -1,0 +1,221 @@
+using System;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Windows.Input;
+using AlenkaAssistant.Models;
+
+namespace AlenkaAssistant.ViewModels
+{
+    public class RelayCommand : ICommand
+    {
+        private readonly Action<object> _execute;
+        private readonly Predicate<object> _canExecute;
+
+        public RelayCommand(Action<object> execute, Predicate<object> canExecute = null)
+        {
+            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
+            _canExecute = canExecute;
+        }
+
+        public event EventHandler CanExecuteChanged
+        {
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
+        }
+
+        public bool CanExecute(object parameter) => _canExecute == null || _canExecute(parameter);
+
+        public void Execute(object parameter) => _execute(parameter);
+    }
+
+    public class PurchaseRequestViewModel : INotifyPropertyChanged
+    {
+        private string _uid;
+        private string _treatmentDescription;
+        private AssistantName? _selectedAssistant;
+        private DateTime? _selectedDate;
+        private string _selectedTime;
+        private string _statusMessage;
+
+        public string Uid
+        {
+            get => _uid;
+            set
+            {
+                if (_uid != value)
+                {
+                    _uid = value;
+                    OnPropertyChanged(nameof(Uid));
+                }
+            }
+        }
+
+        public string TreatmentDescription
+        {
+            get => _treatmentDescription;
+            set
+            {
+                if (_treatmentDescription != value)
+                {
+                    _treatmentDescription = value;
+                    OnPropertyChanged(nameof(TreatmentDescription));
+                }
+            }
+        }
+
+        public ObservableCollection<AssistantName> AssistantNames { get; }
+
+        public AssistantName? SelectedAssistant
+        {
+            get => _selectedAssistant;
+            set
+            {
+                if (_selectedAssistant != value)
+                {
+                    _selectedAssistant = value;
+                    OnPropertyChanged(nameof(SelectedAssistant));
+                }
+            }
+        }
+
+        public DateTime? SelectedDate
+        {
+            get => _selectedDate;
+            set
+            {
+                if (_selectedDate != value)
+                {
+                    _selectedDate = value;
+                    OnPropertyChanged(nameof(SelectedDate));
+                }
+            }
+        }
+
+        public string SelectedTime
+        {
+            get => _selectedTime;
+            set
+            {
+                if (_selectedTime != value)
+                {
+                    _selectedTime = value;
+                    OnPropertyChanged(nameof(SelectedTime));
+                }
+            }
+        }
+
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set
+            {
+                if (_statusMessage != value)
+                {
+                    _statusMessage = value;
+                    OnPropertyChanged(nameof(StatusMessage));
+                }
+            }
+        }
+
+        public ICommand SubmitCommand { get; }
+        public ICommand CancelCommand { get; }
+
+        public PurchaseRequestViewModel()
+        {
+            // Initialize collections
+            AssistantNames = new ObservableCollection<AssistantName>
+            {
+                AssistantName.Pavela,
+                AssistantName.Ratih,
+                AssistantName.Ana
+            };
+
+            // Set defaults
+            SelectedDate = DateTime.Today;
+            SelectedTime = DateTime.Now.ToString("HH:mm");
+
+            // Initialize commands
+            SubmitCommand = new RelayCommand(_ => SubmitRequest(), _ => CanSubmit());
+            CancelCommand = new RelayCommand(_ => CancelRequest());
+        }
+
+        private bool CanSubmit()
+        {
+            return !string.IsNullOrWhiteSpace(Uid) && SelectedAssistant.HasValue && SelectedDate.HasValue;
+        }
+
+        private void SubmitRequest()
+        {
+            // Validate
+            if (!CanSubmit())
+            {
+                StatusMessage = "Please fill in all required fields.";
+                return;
+            }
+
+            try
+            {
+                // Create the model
+                var purchaseRequest = new PurchaseRequestModel
+                {
+                    UserId = Uid,
+                    GeneralTreatmentDesc = TreatmentDescription,
+                    AssistantName = SelectedAssistant.Value,
+                    CreatedAt = GetDateTimeFromInputs()
+                };
+
+                // TODO: Save to database or API
+                StatusMessage = $"✓ Purchase request submitted successfully for UID: {Uid}";
+
+                // Clear form after successful submission
+                ClearForm();
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"✗ Error: {ex.Message}";
+            }
+        }
+
+        private void CancelRequest()
+        {
+            ClearForm();
+            StatusMessage = "Form cleared.";
+        }
+
+        private DateTime GetDateTimeFromInputs()
+        {
+            try
+            {
+                DateTime selectedDate = SelectedDate ?? DateTime.Today;
+                string[] timeParts = (SelectedTime ?? "00:00").Split(':');
+
+                if (timeParts.Length == 2 && int.TryParse(timeParts[0], out int hours) && int.TryParse(timeParts[1], out int minutes))
+                {
+                    return selectedDate.Add(new TimeSpan(hours, minutes, 0));
+                }
+
+                return selectedDate;
+            }
+            catch
+            {
+                return DateTime.Now;
+            }
+        }
+
+        private void ClearForm()
+        {
+            Uid = string.Empty;
+            TreatmentDescription = string.Empty;
+            SelectedAssistant = null;
+            SelectedDate = DateTime.Today;
+            SelectedTime = DateTime.Now.ToString("HH:mm");
+        }
+
+        public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
+
+        protected void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
+        }
+    }
+}
