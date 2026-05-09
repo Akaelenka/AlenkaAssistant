@@ -6,12 +6,12 @@
         xmlns:local="clr-namespace:AlenkaAssistant.Views"
         mc:Ignorable="d"
         Background="#F5F5F5"
-        d:DesignHeight="500" 
+        d:DesignHeight="1080" 
         d:DesignWidth="600">
     <Grid>
         <StackPanel Margin="30" VerticalAlignment="Top">
             <!-- Title -->
-            <TextBlock Text="Purchase Request Form" 
+            <TextBlock Text="Formulir Perawatan Gigi" 
                        FontSize="24" 
                        FontWeight="Bold" 
                        Margin="0,0,0,30" 
@@ -19,7 +19,7 @@
 
             <!-- UID TextBox -->
             <StackPanel Margin="0,0,0,20">
-                <TextBlock Text="UID:" 
+                <TextBlock Text="No. RM" 
                            FontSize="14" 
                            FontWeight="SemiBold" 
                            Margin="0,0,0,8"
@@ -35,7 +35,7 @@
 
             <!-- General Treatment Description TextBox -->
             <StackPanel Margin="0,0,0,20">
-                <TextBlock Text="General Treatment Description:" 
+                <TextBlock Text="Tindakan" 
                            FontSize="14" 
                            FontWeight="SemiBold" 
                            Margin="0,0,0,8"
@@ -53,7 +53,7 @@
 
             <!-- Assistant Name ComboBox -->
             <StackPanel Margin="0,0,0,20">
-                <TextBlock Text="Assistant Name:" 
+                <TextBlock Text="Nama Asisten" 
                            FontSize="14" 
                            FontWeight="SemiBold" 
                            Margin="0,0,0,8"
@@ -68,9 +68,26 @@
                           BorderBrush="#CCCCCC"/>
             </StackPanel>
 
+			<!-- Doctor Name ComboBox -->
+			<StackPanel Margin="0,0,0,20">
+				<TextBlock Text="Nama Dokter"
+                           FontSize="14"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8"
+                           Foreground="#555555"/>
+				<ComboBox ItemsSource="{Binding DoctorNames}"
+                          SelectedItem="{Binding SelectedDoctor}"
+                          Height="40"
+                          Padding="12,10"
+                          FontSize="12"
+                          Background="White"
+                          BorderThickness="1"
+                          BorderBrush="#CCCCCC"/>
+			</StackPanel>
+
             <!-- Date Time Picker -->
             <StackPanel Margin="0,0,0,20">
-                <TextBlock Text="Date and Time:" 
+                <TextBlock Text="Tanggal dan Jam Perawatan" 
                            FontSize="14" 
                            FontWeight="SemiBold" 
                            Margin="0,0,0,8"
@@ -112,7 +129,7 @@
             <!-- Buttons -->
             <StackPanel Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
                 <Button Command="{Binding SubmitCommand}" 
-                        Content="Submit" 
+                        Content="Simpan" 
                         Width="100" 
                         Height="40" 
                         Margin="0,0,10,0"
@@ -122,7 +139,7 @@
                         FontWeight="SemiBold"
                         Cursor="Hand"/>
                 <Button Command="{Binding CancelCommand}" 
-                        Content="Cancel" 
+                        Content="Batal" 
                         Width="100" 
                         Height="40"
                         Background="#f44336"

@@ -9,6 +9,7 @@ namespace AlenkaAssistant.Models
         None,
         Pavela,
         Ratih,
-        Ana
+        Ana,
+        Other
     }
 }

@@ -33,6 +33,7 @@ namespace AlenkaAssistant.ViewModels
         private string _uid;
         private string _treatmentDescription;
         private AssistantName? _selectedAssistant;
+        private DoctorName? _selectedDoctor;
         private DateTime? _selectedDate;
         private string _selectedTime;
         private string _statusMessage;
@@ -64,6 +65,7 @@ namespace AlenkaAssistant.ViewModels
         }
 
         public ObservableCollection<AssistantName> AssistantNames { get; }
+        public ObservableCollection<DoctorName> DoctorNames { get; }
 
         public AssistantName? SelectedAssistant
         {
@@ -74,6 +76,19 @@ namespace AlenkaAssistant.ViewModels
                 {
                     _selectedAssistant = value;
                     OnPropertyChanged(nameof(SelectedAssistant));
+                }
+            }
+        }
+
+        public DoctorName? SelectedDoctor
+        {
+            get => _selectedDoctor;
+            set
+            {
+                if (_selectedDoctor != value)
+                {
+                    _selectedDoctor = value;
+                    OnPropertyChanged(nameof(SelectedDoctor));
                 }
             }
         }
@@ -125,9 +140,19 @@ namespace AlenkaAssistant.ViewModels
             // Initialize collections
             AssistantNames = new ObservableCollection<AssistantName>
             {
+                AssistantName.None,
                 AssistantName.Pavela,
                 AssistantName.Ratih,
-                AssistantName.Ana
+                AssistantName.Ana,
+                AssistantName.Other
+            };
+
+            DoctorNames = new ObservableCollection<DoctorName>
+            {
+                DoctorName.DrgNovi,
+                DoctorName.DrgFarasinta,
+                DoctorName.DrgDiozola,
+                DoctorName.Other
             };
 
             // Set defaults
@@ -141,7 +166,10 @@ namespace AlenkaAssistant.ViewModels
 
         private bool CanSubmit()
         {
-            return !string.IsNullOrWhiteSpace(Uid) && SelectedAssistant.HasValue && SelectedDate.HasValue;
+            return !string.IsNullOrWhiteSpace(Uid) 
+                && SelectedAssistant.HasValue 
+                && SelectedDate.HasValue 
+                && SelectedDoctor.HasValue;
         }
 
         private void SubmitRequest()
@@ -161,6 +189,7 @@ namespace AlenkaAssistant.ViewModels
                     UserId = Uid,
                     GeneralTreatmentDesc = TreatmentDescription,
                     AssistantName = SelectedAssistant.Value,
+                    DoctorName = SelectedDoctor.Value,
                     CreatedAt = GetDateTimeFromInputs()
                 };
 
@@ -207,6 +236,7 @@ namespace AlenkaAssistant.ViewModels
             Uid = string.Empty;
             TreatmentDescription = string.Empty;
             SelectedAssistant = null;
+            SelectedDoctor = null;
             SelectedDate = DateTime.Today;
             SelectedTime = DateTime.Now.ToString("HH:mm");
         }
