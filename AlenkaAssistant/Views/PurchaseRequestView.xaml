@@ -4,10 +4,17 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AlenkaAssistant.Views"
+        xmlns:converters="clr-namespace:AlenkaAssistant.Views.Converters"
         mc:Ignorable="d"
         Background="#F5F5F5"
         d:DesignHeight="1080" 
         d:DesignWidth="600">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:DoctorNameToDisplayItemConverter x:Key="DoctorNameConverter"/>
+        <converters:AssistantNameToDisplayItemConverter x:Key="AssistantNameConverter"/>
+        <converters:TreatmentTypeToDisplayItemConverter x:Key="TreatmentTypeConverter"/>
+    </UserControl.Resources>
     <Grid>
         <StackPanel Margin="30" VerticalAlignment="Top">
             <!-- Title -->
@@ -51,15 +58,15 @@
                          VerticalScrollBarVisibility="Auto"/>
             </StackPanel>
 
-            <!-- Assistant Name ComboBox -->
+            <!-- Treatment Type ComboBox -->
             <StackPanel Margin="0,0,0,20">
-                <TextBlock Text="Nama Asisten" 
+                <TextBlock Text="Tipe Tindakan" 
                            FontSize="14" 
                            FontWeight="SemiBold" 
                            Margin="0,0,0,8"
                            Foreground="#555555"/>
-                <ComboBox ItemsSource="{Binding AssistantNames}" 
-                          SelectedItem="{Binding SelectedAssistant}" 
+                <ComboBox ItemsSource="{Binding TreatmentTypes}" 
+                          SelectedItem="{Binding SelectedTreatmentType, Converter={StaticResource TreatmentTypeConverter}}" 
                           Height="40" 
                           Padding="12,10" 
                           FontSize="12"
@@ -68,21 +75,60 @@
                           BorderBrush="#CCCCCC"/>
             </StackPanel>
 
-			<!-- Doctor Name ComboBox -->
-			<StackPanel Margin="0,0,0,20">
-				<TextBlock Text="Nama Dokter"
-                           FontSize="14"
-                           FontWeight="SemiBold"
+            <!-- Assistant Name ComboBox -->
+            <StackPanel Margin="0,0,0,20">
+                <TextBlock Text="Nama Asisten" 
+                           FontSize="14" 
+                           FontWeight="SemiBold" 
                            Margin="0,0,0,8"
                            Foreground="#555555"/>
-				<ComboBox ItemsSource="{Binding DoctorNames}"
-                          SelectedItem="{Binding SelectedDoctor}"
-                          Height="40"
-                          Padding="12,10"
+                <ComboBox ItemsSource="{Binding AssistantNames}" 
+                          SelectedItem="{Binding SelectedAssistant, Converter={StaticResource AssistantNameConverter}}" 
+                          Height="40" 
+                          Padding="12,10" 
                           FontSize="12"
                           Background="White"
                           BorderThickness="1"
                           BorderBrush="#CCCCCC"/>
+                <!-- Custom Assistant Name TextBox -->
+                <TextBox Text="{Binding CustomAssistantName, UpdateSourceTrigger=PropertyChanged}" 
+                         Height="40" 
+                         Padding="12,10" 
+                         FontSize="12"
+                         Background="White"
+                         BorderThickness="1"
+                         BorderBrush="#CCCCCC"
+                         Margin="0,8,0,0"
+                         Visibility="{Binding ShowCustomAssistant, Converter={StaticResource BooleanToVisibilityConverter}}"
+                         Foreground="#555555"/>
+            </StackPanel>
+
+			<!-- Doctor Name ComboBox -->
+			<StackPanel Margin="0,0,0,20">
+				<TextBlock Text="Nama Dokter"
+						   FontSize="14"
+						   FontWeight="SemiBold"
+						   Margin="0,0,0,8"
+						   Foreground="#555555"/>
+				<ComboBox ItemsSource="{Binding DoctorNames}"
+						  SelectedItem="{Binding SelectedDoctor, Converter={StaticResource DoctorNameConverter}}"
+						  Height="40"
+						  Padding="12,10"
+						  FontSize="12"
+						  Background="White"
+						  BorderThickness="1"
+						  BorderBrush="#CCCCCC"/>
+				<!-- Custom Doctor Name TextBox -->
+				<TextBox Text="{Binding CustomDoctorName, UpdateSourceTrigger=PropertyChanged}" 
+						 Height="40" 
+						 Padding="12,10" 
+						 FontSize="12"
+						 Background="White"
+						 BorderThickness="1"
+						 BorderBrush="#CCCCCC"
+						 Margin="0,8,0,0"
+						 Visibility="{Binding ShowCustomDoctor, Converter={StaticResource BooleanToVisibilityConverter}}"
+						 Foreground="#555555"/>
 			</StackPanel>
 
             <!-- Date Time Picker -->
@@ -102,7 +148,7 @@
                                 BorderBrush="#CCCCCC"
                                 Width="200"
                                 VerticalAlignment="Center"/>
-                    <TextBlock Text="Time:" 
+                    <TextBlock Text="Jam" 
                                FontSize="12" 
                                Margin="20,0,8,0"
                                VerticalAlignment="Center"

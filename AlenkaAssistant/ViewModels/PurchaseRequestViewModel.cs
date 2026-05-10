@@ -32,11 +32,16 @@ namespace AlenkaAssistant.ViewModels
     {
         private string _uid;
         private string _treatmentDescription;
+        private TreatmentType? _selectedTreatmentType;
         private AssistantName? _selectedAssistant;
         private DoctorName? _selectedDoctor;
         private DateTime? _selectedDate;
         private string _selectedTime;
         private string _statusMessage;
+        private string _customAssistantName;
+        private string _customDoctorName;
+        private bool _showCustomAssistant;
+        private bool _showCustomDoctor;
 
         public string Uid
         {
@@ -64,8 +69,22 @@ namespace AlenkaAssistant.ViewModels
             }
         }
 
-        public ObservableCollection<AssistantName> AssistantNames { get; }
-        public ObservableCollection<DoctorName> DoctorNames { get; }
+        public TreatmentType? SelectedTreatmentType
+        {
+            get => _selectedTreatmentType;
+            set
+            {
+                if (_selectedTreatmentType != value)
+                {
+                    _selectedTreatmentType = value;
+                    OnPropertyChanged(nameof(SelectedTreatmentType));
+                }
+            }
+        }
+
+        public ObservableCollection<DisplayItem<TreatmentType>> TreatmentTypes { get; }
+        public ObservableCollection<DisplayItem<AssistantName>> AssistantNames { get; }
+        public ObservableCollection<DisplayItem<DoctorName>> DoctorNames { get; }
 
         public AssistantName? SelectedAssistant
         {
@@ -76,6 +95,13 @@ namespace AlenkaAssistant.ViewModels
                 {
                     _selectedAssistant = value;
                     OnPropertyChanged(nameof(SelectedAssistant));
+
+                    // Update visibility of custom assistant textbox
+                    ShowCustomAssistant = value == AssistantName.Other;
+                    if (value != AssistantName.Other)
+                    {
+                        CustomAssistantName = string.Empty;
+                    }
                 }
             }
         }
@@ -89,6 +115,13 @@ namespace AlenkaAssistant.ViewModels
                 {
                     _selectedDoctor = value;
                     OnPropertyChanged(nameof(SelectedDoctor));
+
+                    // Update visibility of custom doctor textbox
+                    ShowCustomDoctor = value == DoctorName.Other;
+                    if (value != DoctorName.Other)
+                    {
+                        CustomDoctorName = string.Empty;
+                    }
                 }
             }
         }
@@ -132,30 +165,70 @@ namespace AlenkaAssistant.ViewModels
             }
         }
 
+        public string CustomAssistantName
+        {
+            get => _customAssistantName;
+            set
+            {
+                if (_customAssistantName != value)
+                {
+                    _customAssistantName = value;
+                    OnPropertyChanged(nameof(CustomAssistantName));
+                }
+            }
+        }
+
+        public string CustomDoctorName
+        {
+            get => _customDoctorName;
+            set
+            {
+                if (_customDoctorName != value)
+                {
+                    _customDoctorName = value;
+                    OnPropertyChanged(nameof(CustomDoctorName));
+                }
+            }
+        }
+
+        public bool ShowCustomAssistant
+        {
+            get => _showCustomAssistant;
+            set
+            {
+                if (_showCustomAssistant != value)
+                {
+                    _showCustomAssistant = value;
+                    OnPropertyChanged(nameof(ShowCustomAssistant));
+                }
+            }
+        }
+
+        public bool ShowCustomDoctor
+        {
+            get => _showCustomDoctor;
+            set
+            {
+                if (_showCustomDoctor != value)
+                {
+                    _showCustomDoctor = value;
+                    OnPropertyChanged(nameof(ShowCustomDoctor));
+                }
+            }
+        }
+
         public ICommand SubmitCommand { get; }
         public ICommand CancelCommand { get; }
 
         public PurchaseRequestViewModel()
         {
-            // Initialize collections
-            AssistantNames = new ObservableCollection<AssistantName>
-            {
-                AssistantName.None,
-                AssistantName.Pavela,
-                AssistantName.Ratih,
-                AssistantName.Ana,
-                AssistantName.Other
-            };
-
-            DoctorNames = new ObservableCollection<DoctorName>
-            {
-                DoctorName.DrgNovi,
-                DoctorName.DrgFarasinta,
-                DoctorName.DrgDiozola,
-                DoctorName.Other
-            };
+            // Initialize collections using helper methods
+            TreatmentTypes = TreatmentTypeHelper.GetDisplayItems();
+            AssistantNames = AssistantNameHelper.GetDisplayItems();
+            DoctorNames = DoctorNameHelper.GetDisplayItems();
 
             // Set defaults
+            SelectedDoctor = DoctorName.DrgNovi;
             SelectedDate = DateTime.Today;
             SelectedTime = DateTime.Now.ToString("HH:mm");
 
@@ -166,10 +239,28 @@ namespace AlenkaAssistant.ViewModels
 
         private bool CanSubmit()
         {
-            return !string.IsNullOrWhiteSpace(Uid) 
+            // Check basic fields
+            if (!(!string.IsNullOrWhiteSpace(Uid) 
                 && SelectedAssistant.HasValue 
                 && SelectedDate.HasValue 
-                && SelectedDoctor.HasValue;
+                && SelectedDoctor.HasValue))
+            {
+                return false;
+            }
+
+            // Check if custom assistant name is required and provided
+            if (SelectedAssistant == AssistantName.Other && string.IsNullOrWhiteSpace(CustomAssistantName))
+            {
+                return false;
+            }
+
+            // Check if custom doctor name is required and provided
+            if (SelectedDoctor == DoctorName.Other && string.IsNullOrWhiteSpace(CustomDoctorName))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void SubmitRequest()
@@ -177,7 +268,18 @@ namespace AlenkaAssistant.ViewModels
             // Validate
             if (!CanSubmit())
             {
-                StatusMessage = "Please fill in all required fields.";
+                if (SelectedAssistant == AssistantName.Other && string.IsNullOrWhiteSpace(CustomAssistantName))
+                {
+                    StatusMessage = "✗ Please enter a custom assistant name.";
+                }
+                else if (SelectedDoctor == DoctorName.Other && string.IsNullOrWhiteSpace(CustomDoctorName))
+                {
+                    StatusMessage = "✗ Please enter a custom doctor name.";
+                }
+                else
+                {
+                    StatusMessage = "✗ Please fill in all required fields.";
+                }
                 return;
             }
 
