@@ -1,13 +1,47 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Text;
 
 namespace AlenkaAssistant.Models
 {
-    public class CostModel
+    public class CostModel : INotifyPropertyChanged
     {
-        public int TreatmentDesc { get; set; }
-        public int Cost { get; set; }
+        private string? _treatmentDesc;
+        private int _cost;
+
+        public string? TreatmentDesc
+        {
+            get => _treatmentDesc;
+            set
+            {
+                if (_treatmentDesc != value)
+                {
+                    _treatmentDesc = value;
+                    OnPropertyChanged(nameof(TreatmentDesc));
+                }
+            }
+        }
+
+        public int Cost
+        {
+            get => _cost;
+            set
+            {
+                if (_cost != value)
+                {
+                    _cost = value;
+                    OnPropertyChanged(nameof(Cost));
+                }
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        protected void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
     }
 
     public class PurchaseRequestModel

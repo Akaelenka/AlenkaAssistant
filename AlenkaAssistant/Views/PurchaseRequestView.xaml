@@ -72,36 +72,74 @@
                           FontSize="12"
                           Background="White"
                           BorderThickness="1"
-                          BorderBrush="#CCCCCC"/>
-            </StackPanel>
+						  BorderBrush="#CCCCCC"/>
+			</StackPanel>
 
-            <!-- Assistant Name ComboBox -->
-            <StackPanel Margin="0,0,0,20">
-                <TextBlock Text="Nama Asisten" 
-                           FontSize="14" 
-                           FontWeight="SemiBold" 
-                           Margin="0,0,0,8"
-                           Foreground="#555555"/>
-                <ComboBox ItemsSource="{Binding AssistantNames}" 
-                          SelectedItem="{Binding SelectedAssistant, Converter={StaticResource AssistantNameConverter}}" 
-                          Height="40" 
-                          Padding="12,10" 
-                          FontSize="12"
-                          Background="White"
-                          BorderThickness="1"
-                          BorderBrush="#CCCCCC"/>
-                <!-- Custom Assistant Name TextBox -->
-                <TextBox Text="{Binding CustomAssistantName, UpdateSourceTrigger=PropertyChanged}" 
-                         Height="40" 
-                         Padding="12,10" 
-                         FontSize="12"
-                         Background="White"
-                         BorderThickness="1"
-                         BorderBrush="#CCCCCC"
-                         Margin="0,8,0,0"
-                         Visibility="{Binding ShowCustomAssistant, Converter={StaticResource BooleanToVisibilityConverter}}"
-                         Foreground="#555555"/>
-            </StackPanel>
+			<!-- Assistant List Section -->
+			<StackPanel Margin="0,0,0,20">
+				<StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+					<TextBlock Text="Nama Asisten" 
+							   FontSize="14" 
+							   FontWeight="SemiBold"
+							   Foreground="#555555"
+							   VerticalAlignment="Center"/>
+					<Button Command="{Binding AddAssistantCommand}" 
+							Content="Tambah" 
+							Width="80" 
+							Height="30" 
+							Margin="10,0,0,0"
+							Background="#2196F3"
+							Foreground="White"
+							FontSize="11"
+							FontWeight="SemiBold"
+							Cursor="Hand" Click="Button_Click"/>
+				</StackPanel>
+
+				<!-- Items Control for Assistant List -->
+				<ItemsControl ItemsSource="{Binding AssistantsList}">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate>
+							<StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+								<ComboBox ItemsSource="{Binding DataContext.AssistantNamesForList, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+										  SelectedItem="{Binding SelectedAssistant, Converter={StaticResource AssistantNameConverter}, UpdateSourceTrigger=PropertyChanged}" 
+										  Height="35" 
+										  Width="180"
+										  Padding="10,8" 
+										  FontSize="12"
+										  Background="White"
+										  BorderThickness="1"
+										  BorderBrush="#CCCCCC"
+										  Foreground="#555555"
+										  VerticalAlignment="Center"/>
+								<TextBox Text="{Binding CustomAssistantName, UpdateSourceTrigger=PropertyChanged}" 
+										 Height="35" 
+										 Width="180"
+										 Padding="10,8" 
+										 FontSize="12"
+										 Background="White"
+										 BorderThickness="1"
+										 BorderBrush="#CCCCCC"
+										 Margin="10,0,0,0"
+										 Foreground="#555555"
+										 VerticalAlignment="Center"
+										 Visibility="{Binding ShowCustomInput, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+								<Button Command="{Binding DataContext.RemoveAssistantCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+										CommandParameter="{Binding}" 
+										Content="Hapus" 
+										Width="70" 
+										Height="35" 
+										Margin="10,0,0,0"
+										Background="#f44336"
+										Foreground="White"
+										FontSize="11"
+										FontWeight="SemiBold"
+										Cursor="Hand"
+										VerticalAlignment="Center"/>
+							</StackPanel>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</StackPanel>
 
 			<!-- Doctor Name ComboBox -->
 			<StackPanel Margin="0,0,0,20">
@@ -165,6 +203,86 @@
                 </StackPanel>
             </StackPanel>
 
+            <!-- Cost List Section -->
+            <StackPanel Margin="0,0,0,20">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="Daftar Biaya Perawatan" 
+                               FontSize="14" 
+                               FontWeight="SemiBold"
+                               Foreground="#555555"
+                               VerticalAlignment="Center"/>
+                    <Button Command="{Binding AddCostCommand}" 
+                            Content="Tambah" 
+                            Width="80" 
+                            Height="30" 
+                            Margin="10,0,0,0"
+                            Background="#2196F3"
+                            Foreground="White"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"/>
+                </StackPanel>
+
+                <!-- Items Control for Cost List -->
+                <ItemsControl ItemsSource="{Binding CostsList}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <TextBox Text="{Binding TreatmentDesc, UpdateSourceTrigger=PropertyChanged}" 
+                                         Height="35" 
+                                         Width="300"
+                                         Padding="10,8" 
+                                         FontSize="12"
+                                         Background="White"
+                                         BorderThickness="1"
+                                         BorderBrush="#CCCCCC"
+                                         Foreground="#555555"
+                                         VerticalAlignment="Center"/>
+                                <TextBox Text="{Binding Cost, UpdateSourceTrigger=PropertyChanged}" 
+                                         Height="35" 
+                                         Width="100"
+                                         Padding="10,8" 
+                                         FontSize="12"
+                                         Background="White"
+                                         BorderThickness="1"
+                                         BorderBrush="#CCCCCC"
+                                         Margin="10,0,0,0"
+                                         Foreground="#555555"
+                                         VerticalAlignment="Center"/>
+                                <Button Command="{Binding DataContext.RemoveCostCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                                        CommandParameter="{Binding}" 
+                                        Content="Hapus" 
+                                        Width="70" 
+                                        Height="35" 
+                                        Margin="10,0,0,0"
+                                        Background="#f44336"
+                                        Foreground="White"
+                                        FontSize="11"
+                                        FontWeight="SemiBold"
+                                        Cursor="Hand"
+                                        VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Total Cost Display -->
+                <StackPanel Orientation="Horizontal" Margin="0,15,0,0" Background="#E8F5E9">
+                    <TextBlock Text="Total Biaya: Rp " 
+                               FontSize="13" 
+                               FontWeight="SemiBold"
+                               Foreground="#2E7D32"
+                               VerticalAlignment="Center"
+                               Margin="10,8,0,8"/>
+                    <TextBlock Text="{Binding TotalCost, StringFormat=N0}" 
+                               FontSize="13" 
+                               FontWeight="SemiBold"
+                               Foreground="#2E7D32"
+                               VerticalAlignment="Center"
+                               Margin="0,8,10,8"/>
+                </StackPanel>
+            </StackPanel>
+
             <!-- Status Message -->
             <TextBlock Text="{Binding StatusMessage}" 
                        Margin="0,0,0,20" 
@@ -174,6 +292,16 @@
 
             <!-- Buttons -->
             <StackPanel Orientation="Horizontal" Margin="0,20,0,0" HorizontalAlignment="Right">
+                <Button Command="{Binding SaveToGoogleSheetsCommand}" 
+                        Content="Simpan ke Google Sheet" 
+                        Width="150" 
+                        Height="40" 
+                        Margin="0,0,10,0"
+                        Background="#1976D2"
+                        Foreground="White"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Cursor="Hand"/>
                 <Button Command="{Binding SubmitCommand}" 
                         Content="Simpan" 
                         Width="100" 

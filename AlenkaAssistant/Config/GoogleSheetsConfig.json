@@ -1,0 +1,6 @@
+{
+  "credentialsPath": "Path/To/Your/credentials.json",
+  "spreadsheetId": "YOUR_SPREADSHEET_ID",
+  "sheetName": "Sheet1",
+  "enabled": false
+}

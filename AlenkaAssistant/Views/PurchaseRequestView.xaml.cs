@@ -13,5 +13,10 @@ namespace AlenkaAssistant.Views
             InitializeComponent();
             this.DataContext = new PurchaseRequestViewModel();
         }
+
+        private void Button_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+
+        }
     }
 }
