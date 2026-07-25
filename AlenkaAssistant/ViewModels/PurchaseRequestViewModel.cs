@@ -37,7 +37,6 @@ namespace AlenkaAssistant.ViewModels
         private string _uid;
         private string _treatmentDescription;
         private TreatmentType? _selectedTreatmentType;
-        private DoctorName? _selectedDoctor;
         private DateTime? _selectedDate;
         private string _selectedTime;
         private string _statusMessage;
@@ -84,24 +83,39 @@ namespace AlenkaAssistant.ViewModels
         }
 
         public ObservableCollection<DisplayItem<TreatmentType>> TreatmentTypes { get; }
-        public ObservableCollection<DisplayItem<AssistantName>> AssistantNamesForList { get; }
-        public ObservableCollection<DisplayItem<DoctorName>> DoctorNames { get; }
+        public ObservableCollection<string> AssistantNamesForList { get; private set; }
+        public ObservableCollection<string> DoctorNames { get; private set; }
         public ObservableCollection<CostModel> CostsList { get; }
         public ObservableCollection<AssistantModel> AssistantsList { get; }
 
-        public DoctorName? SelectedDoctor
+        private string _selectedAssistantName;
+        public string SelectedAssistantName
         {
-            get => _selectedDoctor;
+            get => _selectedAssistantName;
             set
             {
-                if (_selectedDoctor != value)
+                if (_selectedAssistantName != value)
                 {
-                    _selectedDoctor = value;
-                    OnPropertyChanged(nameof(SelectedDoctor));
+                    _selectedAssistantName = value;
+                    OnPropertyChanged(nameof(SelectedAssistantName));
+                }
+            }
+        }
+
+        private string _selectedDoctorName;
+        public string SelectedDoctorName
+        {
+            get => _selectedDoctorName;
+            set
+            {
+                if (_selectedDoctorName != value)
+                {
+                    _selectedDoctorName = value;
+                    OnPropertyChanged(nameof(SelectedDoctorName));
 
                     // Update visibility of custom doctor textbox
-                    ShowCustomDoctor = value == DoctorName.Other;
-                    if (value != DoctorName.Other)
+                    ShowCustomDoctor = value == "Other";
+                    if (value != "Other")
                     {
                         CustomDoctorName = string.Empty;
                     }
@@ -194,13 +208,12 @@ namespace AlenkaAssistant.ViewModels
         public ICommand AddAssistantCommand { get; }
         public ICommand RemoveAssistantCommand { get; }
         public ICommand SaveToGoogleSheetsCommand { get; }
+        public ICommand SaveLocalCommand { get; }
 
         public PurchaseRequestViewModel()
         {
-            // Initialize collections using helper methods
+            // Initialize treatment types (still enum-based)
             TreatmentTypes = TreatmentTypeHelper.GetDisplayItems();
-            AssistantNamesForList = AssistantNameHelper.GetDisplayItemsForList();
-            DoctorNames = DoctorNameHelper.GetDisplayItems();
 
             // Initialize costs list with one default item
             CostsList = new ObservableCollection<CostModel>
@@ -223,8 +236,11 @@ namespace AlenkaAssistant.ViewModels
                 item.PropertyChanged += CostItem_PropertyChanged;
             }
 
+            // Load dropdown configuration
+            LoadDropdownConfigAsync();
+
             // Set defaults
-            SelectedDoctor = DoctorName.DrgNovi;
+            SelectedDoctorName = DoctorNames?.Count > 0 ? DoctorNames[0] : "Other";
             SelectedDate = DateTime.Today;
             SelectedTime = DateTime.Now.ToString("HH:mm");
 
@@ -236,6 +252,39 @@ namespace AlenkaAssistant.ViewModels
             AddAssistantCommand = new RelayCommand(_ => AddAssistant());
             RemoveAssistantCommand = new RelayCommand(obj => RemoveAssistant(obj));
             SaveToGoogleSheetsCommand = new RelayCommand(_ => SaveToGoogleSheetsAsync(), _ => CanSaveToGoogleSheets());
+            SaveLocalCommand = new RelayCommand(_ => SaveLocalAsync(), _ => CanSaveLocal());
+        }
+
+        private async void LoadDropdownConfigAsync()
+        {
+            try
+            {
+                var dropdownConfigService = new DropdownConfigService();
+                string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "GoogleSheetsConfig.json");
+
+                bool loaded = await dropdownConfigService.LoadDropdownConfigAsync(configPath);
+
+                if (loaded)
+                {
+                    AssistantNamesForList = dropdownConfigService.GetAssistantNames();
+                    DoctorNames = dropdownConfigService.GetDoctorNames();
+                    OnPropertyChanged(nameof(AssistantNamesForList));
+                    OnPropertyChanged(nameof(DoctorNames));
+                }
+                else
+                {
+                    // Fallback to defaults if config loading fails
+                    AssistantNamesForList = new ObservableCollection<string> { "Pavela", "Ana", "Other" };
+                    DoctorNames = new ObservableCollection<string> { "Drg. Novi", "Drg. Rina", "Other" };
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading dropdown config: {ex.Message}");
+                // Use defaults
+                AssistantNamesForList = new ObservableCollection<string> { "Pavela", "Ana", "Other" };
+                DoctorNames = new ObservableCollection<string> { "Drg. Novi", "Drg. Rina", "Other" };
+            }
         }
 
         private bool CanSubmit()
@@ -243,13 +292,13 @@ namespace AlenkaAssistant.ViewModels
             // Check basic fields
             if (!(!string.IsNullOrWhiteSpace(Uid) 
                 && SelectedDate.HasValue 
-                && SelectedDoctor.HasValue))
+                && !string.IsNullOrWhiteSpace(SelectedDoctorName)))
             {
                 return false;
             }
 
             // Check if custom doctor name is required and provided
-            if (SelectedDoctor == DoctorName.Other && string.IsNullOrWhiteSpace(CustomDoctorName))
+            if (SelectedDoctorName == "Other" && string.IsNullOrWhiteSpace(CustomDoctorName))
             {
                 return false;
             }
@@ -262,7 +311,7 @@ namespace AlenkaAssistant.ViewModels
             // Validate
             if (!CanSubmit())
             {
-                if (SelectedDoctor == DoctorName.Other && string.IsNullOrWhiteSpace(CustomDoctorName))
+                if (SelectedDoctorName == "Other" && string.IsNullOrWhiteSpace(CustomDoctorName))
                 {
                     StatusMessage = "✗ Please enter a custom doctor name.";
                 }
@@ -280,8 +329,8 @@ namespace AlenkaAssistant.ViewModels
                 {
                     UserId = Uid,
                     GeneralTreatmentDesc = TreatmentDescription,
-                    AssistantName = AssistantsList.Count > 0 ? AssistantsList[0].SelectedAssistant : AssistantName.None,
-                    DoctorName = SelectedDoctor.Value,
+                    AssistantName = AssistantName.None,
+                    DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
                     CreatedAt = GetDateTimeFromInputs(),
                     AltAssistantName = new List<string>(),
                     CostDetails = CostsList.ToList()
@@ -290,15 +339,14 @@ namespace AlenkaAssistant.ViewModels
                 // Add assistant names to AltAssistantName list
                 foreach (var assistant in AssistantsList)
                 {
-                    string assistantName = assistant.SelectedAssistant == AssistantName.Other 
+                    string assistantName = assistant.SelectedAssistantName == "Other" 
                         ? (assistant.CustomAssistantName ?? "")
-                        : AssistantNameHelper.GetDisplayName(assistant.SelectedAssistant);
+                        : assistant.SelectedAssistantName;
                     purchaseRequest.AltAssistantName.Add(assistantName);
                 }
 
                 // TODO: Save to database or API
                 StatusMessage = $"✓ Purchase request submitted successfully for UID: {Uid}";
-
                 // Clear form after successful submission
                 ClearForm();
             }
@@ -334,11 +382,29 @@ namespace AlenkaAssistant.ViewModels
             }
         }
 
+        private DoctorName ConvertDoctorNameStringToEnum(string doctorNameString)
+        {
+            if (string.IsNullOrWhiteSpace(doctorNameString))
+                return DoctorName.Other;
+
+            // Try to find a matching doctor by display name
+            foreach (DoctorName enumVal in System.Enum.GetValues(typeof(DoctorName)))
+            {
+                if (DoctorNameHelper.GetDisplayName(enumVal) == doctorNameString || 
+                    DoctorNameHelper.GetDisplayName(enumVal).Equals(doctorNameString, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return enumVal;
+                }
+            }
+
+            return DoctorName.Other;
+        }
+
         private void ClearForm()
         {
             Uid = string.Empty;
             TreatmentDescription = string.Empty;
-            SelectedDoctor = null;
+            SelectedDoctorName = DoctorNames?.Count > 0 ? DoctorNames[0] : "Other";
             SelectedDate = DateTime.Today;
             SelectedTime = DateTime.Now.ToString("HH:mm");
 
@@ -406,7 +472,8 @@ namespace AlenkaAssistant.ViewModels
 
         private void AddAssistant()
         {
-            AssistantsList.Add(new AssistantModel { SelectedAssistant = AssistantName.Pavela, CustomAssistantName = string.Empty });
+            var defaultAssistant = AssistantNamesForList?.Count > 0 ? AssistantNamesForList[0] : "Other";
+            AssistantsList.Add(new AssistantModel { SelectedAssistantName = defaultAssistant, CustomAssistantName = string.Empty });
         }
 
         private void RemoveAssistant(object parameter)
@@ -467,7 +534,10 @@ namespace AlenkaAssistant.ViewModels
 
                     if (!initialized)
                     {
-                        StatusMessage = "✗ Google Sheets is not enabled in config. Please configure GoogleSheetsConfig.json";
+                        System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            StatusMessage = "✗ Google Sheets is not enabled in config. Please configure GoogleSheetsConfig.json";
+                        });
                         return;
                     }
 
@@ -477,37 +547,124 @@ namespace AlenkaAssistant.ViewModels
                         UserId = Uid,
                         GeneralTreatmentDesc = TreatmentDescription,
                         TreatmentType = SelectedTreatmentType ?? TreatmentType.Other,
-                        DoctorName = SelectedDoctor.Value,
+                        DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
                         CreatedAt = GetDateTimeFromInputs(),
                         TotalCost = TotalCost,
                         AltAssistantName = new List<string>(),
-                        CostDetails = CostsList.ToList()
+                        CostDetails = CostsList.ToList(),
+                        AltDoctorName = SelectedDoctorName == "Other" ? CustomDoctorName : null
                     };
 
                     // Add assistant names to AltAssistantName list
                     foreach (var assistant in AssistantsList)
                     {
-                        string assistantName = assistant.SelectedAssistant == AssistantName.Other 
+                        string assistantName = assistant.SelectedAssistantName == "Other" 
                             ? (assistant.CustomAssistantName ?? "")
-                            : AssistantNameHelper.GetDisplayName(assistant.SelectedAssistant);
+                            : assistant.SelectedAssistantName;
                         purchaseRequest.AltAssistantName.Add(assistantName);
                     }
 
                     // Append to Google Sheet
                     bool success = await googleSheetsService.AppendPurchaseRequestAsync(purchaseRequest);
 
-                    if (success)
+                    // Use Dispatcher to update UI from background thread
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
-                        StatusMessage = "✓ Successfully saved to Google Sheets!";
-                    }
-                    else
-                    {
-                        StatusMessage = "✗ Failed to save to Google Sheets";
-                    }
+                        if (success)
+                        {
+                            StatusMessage = "✓ Successfully saved to Google Sheets!";
+                        }
+                        else
+                        {
+                            StatusMessage = "✗ Failed to save to Google Sheets";
+                        }
+                    });
                 }
                 catch (Exception ex)
                 {
-                    StatusMessage = $"✗ Error saving to Google Sheets: {ex.Message}";
+                    // Use Dispatcher to update UI from background thread
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        StatusMessage = $"✗ Error saving to Google Sheets: {ex.Message}";
+                    });
+                }
+            });
+        }
+
+        private bool CanSaveLocal()
+        {
+            // Can save if basic fields are filled
+            return !string.IsNullOrWhiteSpace(Uid) && SelectedDate.HasValue;
+        }
+
+        private void SaveLocalAsync()
+        {
+            StatusMessage = "Saving locally...";
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var localDataService = new LocalDataService();
+
+                    // Create purchase request model from form data
+                    var purchaseRequest = new PurchaseRequestModel
+                    {
+                        UserId = Uid,
+                        GeneralTreatmentDesc = TreatmentDescription,
+                        TreatmentType = SelectedTreatmentType ?? TreatmentType.Other,
+                        DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
+                        CreatedAt = GetDateTimeFromInputs(),
+                        TotalCost = TotalCost,
+                        AltAssistantName = new List<string>(),
+                        CostDetails = new List<CostModel>(),
+                        AltDoctorName = SelectedDoctorName == "Other" ? CustomDoctorName : null
+                    };
+
+                    // Add assistant names to AltAssistantName list
+                    foreach (var assistant in AssistantsList)
+                    {
+                        string assistantName = assistant.SelectedAssistantName == "Other" 
+                            ? (assistant.CustomAssistantName ?? "")
+                            : assistant.SelectedAssistantName;
+                        purchaseRequest.AltAssistantName.Add(assistantName);
+                    }
+
+                    // Add costs to CostDetails
+                    foreach (var cost in CostsList)
+                    {
+                        purchaseRequest.CostDetails.Add(new CostModel 
+                        { 
+                            TreatmentDesc = cost.TreatmentDesc, 
+                            Cost = cost.Cost 
+                        });
+                    }
+
+                    // Save to local storage
+                    bool success = await localDataService.SavePurchaseRequestAsync(purchaseRequest);
+
+                    // Use Dispatcher to update UI from background thread
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (success)
+                        {
+                            StatusMessage = "✓ Successfully saved locally!";
+                            // Optionally clear the form after save
+                            ClearForm();
+                        }
+                        else
+                        {
+                            StatusMessage = "✗ Failed to save locally";
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    // Use Dispatcher to update UI from background thread
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        StatusMessage = $"✗ Error saving locally: {ex.Message}";
+                    });
                 }
             });
         }

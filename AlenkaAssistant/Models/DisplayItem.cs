@@ -33,4 +33,38 @@ namespace AlenkaAssistant.Models
             return Value.GetHashCode();
         }
     }
+
+    /// <summary>
+    /// Simple string-based display item for configurable dropdowns
+    /// </summary>
+    public class DisplayItemString
+    {
+        public string Value { get; set; }
+        public string DisplayName { get; set; }
+
+        public DisplayItemString(string value, string displayName = null)
+        {
+            Value = value;
+            DisplayName = displayName ?? value;
+        }
+
+        public override string ToString()
+        {
+            return DisplayName;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is DisplayItemString other)
+            {
+                return Value.Equals(other.Value, System.StringComparison.OrdinalIgnoreCase);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return Value.GetHashCode();
+        }
+    }
 }

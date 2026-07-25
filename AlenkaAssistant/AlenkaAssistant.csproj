@@ -20,4 +20,8 @@
     </None>
   </ItemGroup>
 
+  <Target Name="UnblockDlls" AfterTargets="Build">
+    <Exec Command="powershell.exe -Command &quot;Get-ChildItem -Path '$(OutDir)' -Recurse -Filter '*.dll' -ErrorAction SilentlyContinue | ForEach-Object { Remove-Item -Path ($_.FullName + ':Zone.Identifier') -ErrorAction SilentlyContinue; $_ | Unblock-File -ErrorAction SilentlyContinue }; Write-Host 'Unblocked all DLLs'&quot;" ContinueOnError="true" />
+  </Target>
+
 </Project>

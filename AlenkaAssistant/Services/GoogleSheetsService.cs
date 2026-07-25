@@ -27,6 +27,23 @@ namespace AlenkaAssistant.Services
             public string SpreadsheetId { get; set; }
             public string SheetName { get; set; }
             public bool Enabled { get; set; }
+            /// <summary>
+            /// Column mapping. Set to null or 0 to exclude a column from being sent to Google Sheets.
+            /// For example: { "assistantNames": null } or { "assistantNames": 0 } will not send assistant names.
+            /// </summary>
+            public Dictionary<string, int?> ColumnMapping { get; set; } = new Dictionary<string, int?>
+            {
+                { "year", 1 },
+                { "month", 2 },
+                { "date", 3 },
+                { "totalCost", 4 },
+                { "costDetail", 5 },
+                { "userId", 6 },
+                { "treatmentDescription", 7 },
+                { "treatmentType", 8 },
+                { "assistantNames", 9 },
+                { "doctorName", 10 }
+            };
         }
 
         /// <summary>
@@ -151,6 +168,9 @@ namespace AlenkaAssistant.Services
                 string assistantNames = GetAssistantNames(request.AltAssistantName);
                 string doctorName = GetDoctorDisplay(request.DoctorName);
 
+                // Get column positions from config
+                var colMap = _config.ColumnMapping;
+
                 // Prepare rows for each cost item
                 var rows = new List<List<object>>();
 
@@ -159,27 +179,27 @@ namespace AlenkaAssistant.Services
                     for (int i = 0; i < request.CostDetails.Count; i++)
                     {
                         var costItem = request.CostDetails[i];
-                        var row = new List<object>
-                        {
-                            i == 0 ? year : "",                          // Year (only first row)
-                            i == 0 ? month : "",                         // Month (only first row)
-                            i == 0 ? date : "",                          // Date (only first row)
-                            i == 0 ? totalCost : "",                     // Total Cost (only first row)
-                            costItem.Cost.ToString(),                    // Cost Detail
-                            i == 0 ? request.UserId : "",                // RM# (only first row)
-                            costItem.TreatmentDesc ?? "",                // Tindakan
-                            i == 0 ? treatmentType : "",                 // Treatment Type (only first row)
-                            i == 0 ? assistantNames : "",                // Assistant Name (only first row)
-                            i == 0 ? doctorName : ""                     // Doctor Name (only first row)
-                        };
+                        var row = BuildRowWithColumnMapping(
+                            colMap,
+                            i == 0 ? year : "",
+                            i == 0 ? month : "",
+                            i == 0 ? date : "",
+                            i == 0 ? totalCost : "",
+                            costItem.Cost.ToString(),
+                            i == 0 ? request.UserId : "",
+                            costItem.TreatmentDesc ?? "",
+                            i == 0 ? treatmentType : "",
+                            i == 0 ? assistantNames : "",
+                            i == 0 ? doctorName : ""
+                        );
                         rows.Add(row);
                     }
                 }
                 else
                 {
                     // If no cost details, create one row with empty cost
-                    var row = new List<object>
-                    {
+                    var row = BuildRowWithColumnMapping(
+                        colMap,
                         year,
                         month,
                         date,
@@ -190,7 +210,7 @@ namespace AlenkaAssistant.Services
                         treatmentType,
                         assistantNames,
                         doctorName
-                    };
+                    );
                     rows.Add(row);
                 }
 
@@ -244,6 +264,72 @@ namespace AlenkaAssistant.Services
             {
                 throw new Exception($"Failed to append purchase request to Google Sheet: {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// Build a row based on column mapping configuration
+        /// </summary>
+        private List<object> BuildRowWithColumnMapping(
+            Dictionary<string, int?> columnMapping,
+            string year,
+            string month,
+            string date,
+            string totalCost,
+            string costDetail,
+            string userId,
+            string treatmentDescription,
+            string treatmentType,
+            string assistantNames,
+            string doctorName)
+        {
+            // Find the maximum column position to know how large the row should be
+            // Skip columns with null or 0 values (both mean "don't use this column")
+            int maxCol = columnMapping.Values
+                .Where(v => v.HasValue && v.Value > 0)
+                .DefaultIfEmpty(0)
+                .Max() ?? 0;
+
+            if (maxCol == 0)
+            {
+                // No columns configured, return empty row
+                return new List<object>();
+            }
+            var row = new List<object>(new object[maxCol]);
+
+            // Helper function to safely set value at column position
+            Action<string, string> SetColumn = (key, value) =>
+            {
+                // Skip if key not found, value is null, or value is 0
+                if (columnMapping.ContainsKey(key) && columnMapping[key].HasValue && columnMapping[key].Value > 0)
+                {
+                    int colPos = columnMapping[key].Value - 1; // Convert 1-based to 0-based
+                    if (colPos >= 0 && colPos < row.Count)
+                    {
+                        row[colPos] = value ?? "";
+                    }
+                }
+            };
+
+            // Map all values based on column configuration
+            SetColumn("year", year);
+            SetColumn("month", month);
+            SetColumn("date", date);
+            SetColumn("totalCost", totalCost);
+            SetColumn("costDetail", costDetail);
+            SetColumn("userId", userId);
+            SetColumn("treatmentDescription", treatmentDescription);
+            SetColumn("treatmentType", treatmentType);
+            SetColumn("assistantNames", assistantNames);
+            SetColumn("doctorName", doctorName);
+
+            // Replace any nulls with empty strings
+            for (int i = 0; i < row.Count; i++)
+            {
+                if (row[i] == null)
+                    row[i] = "";
+            }
+
+            return row;
         }
 
         /// <summary>

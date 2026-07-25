@@ -14,6 +14,7 @@
         <converters:DoctorNameToDisplayItemConverter x:Key="DoctorNameConverter"/>
         <converters:AssistantNameToDisplayItemConverter x:Key="AssistantNameConverter"/>
         <converters:TreatmentTypeToDisplayItemConverter x:Key="TreatmentTypeConverter"/>
+        <converters:StringPassThroughConverter x:Key="StringPassThroughConverter"/>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -108,7 +109,7 @@
 						<DataTemplate>
 							<StackPanel Orientation="Horizontal" Margin="0,0,0,10">
 								<ComboBox ItemsSource="{Binding DataContext.AssistantNamesForList, RelativeSource={RelativeSource AncestorType=UserControl}}" 
-										  SelectedItem="{Binding SelectedAssistant, Converter={StaticResource AssistantNameConverter}, UpdateSourceTrigger=PropertyChanged}" 
+										  SelectedItem="{Binding SelectedAssistantName, Converter={StaticResource StringPassThroughConverter}, UpdateSourceTrigger=PropertyChanged}" 
 										  Height="35" 
 										  Width="180"
 										  Padding="10,8" 
@@ -156,7 +157,7 @@
 						   Margin="0,0,0,8"
 						   Foreground="#555555"/>
 				<ComboBox ItemsSource="{Binding DoctorNames}"
-						  SelectedItem="{Binding SelectedDoctor, Converter={StaticResource DoctorNameConverter}}"
+						  SelectedItem="{Binding SelectedDoctorName}"
 						  Height="40"
 						  Padding="12,10"
 						  FontSize="12"
@@ -301,35 +302,38 @@
 
         <!-- Fixed Button Bar at Bottom -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="30,15,30,15" HorizontalAlignment="Right" Background="#F5F5F5">
-            <Button Command="{Binding SaveToGoogleSheetsCommand}" 
-                    Content="Simpan ke Google Sheet" 
-                    Width="150" 
-                    Height="40" 
+            <Button Command="{Binding CancelCommand}" 
+                    Content="Batal" 
+                    Width="100" 
+                    Height="40"
                     Margin="0,0,10,0"
-                    Background="#1976D2"
+                    Background="#f44336"
                     Foreground="White"
                     FontSize="12"
                     FontWeight="SemiBold"
-                    Cursor="Hand"/>
-            <Button Command="{Binding SubmitCommand}" 
-                    Content="Simpan" 
-                    Width="100" 
+                    Cursor="Hand"
+                    ToolTip="Cancel and clear form"/>
+            <Button Command="{Binding SaveLocalCommand}" 
+                    Content="Simpan Lokal" 
+                    Width="130" 
                     Height="40" 
                     Margin="0,0,10,0"
                     Background="#4CAF50"
                     Foreground="White"
                     FontSize="12"
                     FontWeight="SemiBold"
-                    Cursor="Hand"/>
-            <Button Command="{Binding CancelCommand}" 
-                    Content="Batal" 
-                    Width="100" 
-                    Height="40"
-                    Background="#f44336"
+                    Cursor="Hand"
+                    ToolTip="Save data locally on this computer"/>
+            <Button Command="{Binding SaveToGoogleSheetsCommand}" 
+                    Content="Simpan ke Google Sheet" 
+                    Width="150" 
+                    Height="40" 
+                    Background="#1976D2"
                     Foreground="White"
                     FontSize="12"
                     FontWeight="SemiBold"
-                    Cursor="Hand"/>
+                    Cursor="Hand"
+                    ToolTip="Save data to Google Sheets"/>
         </StackPanel>
     </Grid>
 </UserControl>

@@ -20,18 +20,18 @@ namespace AlenkaAssistant.Models
     /// </summary>
     public class AssistantModel : INotifyPropertyChanged
     {
-        private AssistantName _selectedAssistant;
+        private string _selectedAssistantName;
         private string? _customAssistantName;
 
-        public AssistantName SelectedAssistant
+        public string SelectedAssistantName
         {
-            get => _selectedAssistant;
+            get => _selectedAssistantName;
             set
             {
-                if (_selectedAssistant != value)
+                if (_selectedAssistantName != value)
                 {
-                    _selectedAssistant = value;
-                    OnPropertyChanged(nameof(SelectedAssistant));
+                    _selectedAssistantName = value;
+                    OnPropertyChanged(nameof(SelectedAssistantName));
                     OnPropertyChanged(nameof(ShowCustomInput));
                 }
             }
@@ -51,9 +51,9 @@ namespace AlenkaAssistant.Models
         }
 
         /// <summary>
-        /// Indicates whether custom input should be shown
+        /// Indicates whether custom input should be shown (when "Other" is selected)
         /// </summary>
-        public bool ShowCustomInput => SelectedAssistant == AssistantName.Other;
+        public bool ShowCustomInput => _selectedAssistantName == "Other";
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
