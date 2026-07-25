@@ -1,5 +1,5 @@
 {
-  "credentialsPath": "Path/To/Your/credentials.json",
+  "deploymentUrl": "https://script.google.com/macros/d/YOUR_DEPLOYMENT_ID/userweb",
   "spreadsheetId": "YOUR_SPREADSHEET_ID",
   "sheetName": "Sheet1",
   "enabled": false

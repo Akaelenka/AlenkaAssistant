@@ -2,31 +2,28 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using AlenkaAssistant.Models;
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Services;
-using Google.Apis.Sheets.v4;
-using Google.Apis.Sheets.v4.Data;
 
 namespace AlenkaAssistant.Services
 {
     /// <summary>
-    /// Service for interacting with Google Sheets API to save purchase request data
+    /// Service for interacting with Google Sheets via Google Apps Script
     /// </summary>
     public class GoogleSheetsService
     {
-        private SheetsService _sheetsService;
+        private HttpClient _httpClient;
         private GoogleSheetsConfig _config;
-        private const string ApplicationName = "AlenkaAssistant";
 
         /// <summary>
         /// Configuration class for Google Sheets
         /// </summary>
         public class GoogleSheetsConfig
         {
-            public string CredentialsPath { get; set; }
+            public string DeploymentUrl { get; set; }
             public string SpreadsheetId { get; set; }
             public string SheetName { get; set; }
             public bool Enabled { get; set; }
@@ -54,24 +51,19 @@ namespace AlenkaAssistant.Services
                     return false;
                 }
 
-                if (!File.Exists(_config.CredentialsPath))
+                // Validate deployment URL
+                if (string.IsNullOrEmpty(_config.DeploymentUrl))
                 {
-                    throw new FileNotFoundException($"Credentials file not found: {_config.CredentialsPath}");
+                    throw new InvalidOperationException("DeploymentUrl is not configured in GoogleSheetsConfig.json");
                 }
 
-                // Authenticate with Google Sheets API
-                GoogleCredential credential;
-                using (var stream = new FileStream(_config.CredentialsPath, FileMode.Open, FileAccess.Read))
+                if (!Uri.TryCreate(_config.DeploymentUrl, UriKind.Absolute, out _))
                 {
-                    credential = GoogleCredential.FromStream(stream)
-                        .CreateScoped(SheetsService.Scope.Spreadsheets);
+                    throw new InvalidOperationException($"DeploymentUrl is not a valid URL: {_config.DeploymentUrl}");
                 }
 
-                _sheetsService = new SheetsService(new BaseClientService.Initializer()
-                {
-                    HttpClientInitializer = credential,
-                    ApplicationName = ApplicationName,
-                });
+                // Initialize HTTP client
+                _httpClient = new HttpClient();
 
                 return true;
             }
@@ -145,7 +137,7 @@ namespace AlenkaAssistant.Services
         {
             try
             {
-                if (_sheetsService == null || _config == null)
+                if (_httpClient == null || _config == null)
                 {
                     throw new InvalidOperationException("Google Sheets service not initialized");
                 }
@@ -160,7 +152,7 @@ namespace AlenkaAssistant.Services
                 string doctorName = GetDoctorDisplay(request.DoctorName);
 
                 // Prepare rows for each cost item
-                var rows = new List<IList<object>>();
+                var rows = new List<List<object>>();
 
                 if (request.CostDetails != null && request.CostDetails.Count > 0)
                 {
@@ -202,18 +194,39 @@ namespace AlenkaAssistant.Services
                     rows.Add(row);
                 }
 
-                // Append rows to sheet
-                var valueRange = new ValueRange()
+                // Prepare JSON payload
+                var payload = new
                 {
-                    Values = rows.Cast<IList<object>>().ToList()
+                    sheetName = _config.SheetName,
+                    values = rows
                 };
 
-                var appendRequest = _sheetsService.Spreadsheets.Values.Append(valueRange, _config.SpreadsheetId, $"{_config.SheetName}!A:J");
-                appendRequest.ValueInputOption = SpreadsheetsResource.ValuesResource.AppendRequest.ValueInputOptionEnum.USERENTERED;
+                var jsonContent = JsonSerializer.Serialize(payload);
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-                var appendResponse = await appendRequest.ExecuteAsync();
+                // Send POST request to Google Apps Script
+                var response = await _httpClient.PostAsync(_config.DeploymentUrl, content);
 
-                return appendResponse != null;
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException($"Failed to append to Google Sheet. Status: {response.StatusCode}. Response: {errorContent}");
+                }
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var responseObj = JsonSerializer.Deserialize<JsonElement>(responseContent);
+
+                if (responseObj.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
+                {
+                    return true;
+                }
+                else
+                {
+                    var errorMsg = responseObj.TryGetProperty("error", out var errorProp) 
+                        ? errorProp.GetString() 
+                        : "Unknown error";
+                    throw new Exception($"Google Apps Script returned error: {errorMsg}");
+                }
             }
             catch (Exception ex)
             {
@@ -224,6 +237,6 @@ namespace AlenkaAssistant.Services
         /// <summary>
         /// Check if service is properly configured and enabled
         /// </summary>
-        public bool IsConfigured => _sheetsService != null && _config?.Enabled == true;
+        public bool IsConfigured => _httpClient != null && _config?.Enabled == true;
     }
 }
