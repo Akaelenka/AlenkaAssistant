@@ -214,6 +214,18 @@ namespace AlenkaAssistant.Services
                 }
 
                 var responseContent = await response.Content.ReadAsStringAsync();
+
+                // Check if response is empty or starts with HTML (error)
+                if (string.IsNullOrWhiteSpace(responseContent))
+                {
+                    throw new Exception("Empty response from Google Apps Script");
+                }
+
+                if (responseContent.StartsWith("<") || responseContent.StartsWith("<!"))
+                {
+                    throw new Exception($"Google Apps Script returned HTML instead of JSON. This usually means the deployment URL is invalid or the script has an error. Response: {responseContent.Substring(0, Math.Min(200, responseContent.Length))}");
+                }
+
                 var responseObj = JsonSerializer.Deserialize<JsonElement>(responseContent);
 
                 if (responseObj.TryGetProperty("success", out var successProp) && successProp.GetBoolean())
