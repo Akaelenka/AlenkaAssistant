@@ -7,7 +7,7 @@ namespace AlenkaAssistant.Models
 {
     public enum TreatmentType
     {
-        Other,
+        Lainnya,
         Ortho,
         Tumpat,
         Exo,

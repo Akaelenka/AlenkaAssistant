@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
+using System.Windows;
 using System.Windows.Input;
 using AlenkaAssistant.Models;
 using AlenkaAssistant.Services;
@@ -42,6 +43,50 @@ namespace AlenkaAssistant.ViewModels
         private string _customDoctorName;
         private bool _showCustomDoctor;
 
+        private PatientLookupService _patientLookupService;
+        private string _patientName;
+        private string _patientLookupMessage;
+        private bool _isPatientLookupLoading;
+
+        public string PatientName
+        {
+            get => _patientName;
+            set
+            {
+                if (_patientName != value)
+                {
+                    _patientName = value;
+                    OnPropertyChanged(nameof(PatientName));
+                }
+            }
+        }
+
+        public string PatientLookupMessage
+        {
+            get => _patientLookupMessage;
+            set
+            {
+                if (_patientLookupMessage != value)
+                {
+                    _patientLookupMessage = value;
+                    OnPropertyChanged(nameof(PatientLookupMessage));
+                }
+            }
+        }
+
+        public bool IsPatientLookupLoading
+        {
+            get => _isPatientLookupLoading;
+            set
+            {
+                if (_isPatientLookupLoading != value)
+                {
+                    _isPatientLookupLoading = value;
+                    OnPropertyChanged(nameof(IsPatientLookupLoading));
+                }
+            }
+        }
+
         public string Uid
         {
             get => _uid;
@@ -51,6 +96,18 @@ namespace AlenkaAssistant.ViewModels
                 {
                     _uid = value;
                     OnPropertyChanged(nameof(Uid));
+
+                    // Trigger patient lookup when RM changes
+                    if (!string.IsNullOrWhiteSpace(value) && _patientLookupService != null)
+                    {
+                        LookupPatientAsync(value).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        // Clear patient info if UID is empty
+                        PatientName = "";
+                        PatientLookupMessage = "";
+                    }
                 }
             }
         }
@@ -222,7 +279,7 @@ namespace AlenkaAssistant.ViewModels
                 item.PropertyChanged += CostItem_PropertyChanged;
             }
 
-            // Load dropdown configuration
+            // Load dropdown configuration and initialize patient lookup service
             LoadDropdownConfigAsync();
 
             // Set defaults
@@ -261,6 +318,21 @@ namespace AlenkaAssistant.ViewModels
                     {
                         SelectedDoctorName = DoctorNames[0];
                     }
+
+                    // Initialize PatientLookupService with deployment URL
+                    try
+                    {
+                        string deploymentUrl = dropdownConfigService.GetDeploymentUrl();
+                        if (!string.IsNullOrWhiteSpace(deploymentUrl))
+                        {
+                            _patientLookupService = new PatientLookupService(deploymentUrl);
+                            System.Diagnostics.Debug.WriteLine("[ViewModel] PatientLookupService initialized");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ViewModel] Error initializing PatientLookupService: {ex.Message}");
+                    }
                 }
                 else
                 {
@@ -277,6 +349,78 @@ namespace AlenkaAssistant.ViewModels
                 AssistantNamesForList = new ObservableCollection<string> { "Pavela", "Ana", "Other" };
                 DoctorNames = new ObservableCollection<string> { "Drg. Novi", "Drg. Rina", "Other" };
                 SelectedDoctorName = DoctorNames[0];
+            }
+        }
+
+        /// <summary>
+        /// Lookup patient name by RM number from the patient sheet
+        /// </summary>
+        private async Task LookupPatientAsync(string rmNumber)
+        {
+            try
+            {
+                // Clear previous results
+                PatientName = "";
+                PatientLookupMessage = "";
+                IsPatientLookupLoading = true;
+
+                if (_patientLookupService == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("[ViewModel] PatientLookupService not initialized");
+                    IsPatientLookupLoading = false;
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(rmNumber))
+                {
+                    IsPatientLookupLoading = false;
+                    return;
+                }
+
+                // Extract just the number part for searching
+                string searchValue = NoRmFormatter.GetSearchValue(rmNumber);
+                System.Diagnostics.Debug.WriteLine($"[ViewModel] Looking up patient with RM: {rmNumber} (search value: {searchValue})");
+
+                var result = await _patientLookupService.LookupPatientAsync(
+                    sheetName: "NoRM",
+                    rmNumber: searchValue,
+                    searchColumn: 0,  // Column A
+                    resultColumn: 1   // Column B
+                );
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    IsPatientLookupLoading = false;
+
+                    if (result.Success && result.Found)
+                    {
+                        PatientName = result.PatientName;
+                        PatientLookupMessage = ""; // Clear message on success
+                        System.Diagnostics.Debug.WriteLine($"[ViewModel] Patient found: {result.PatientName}");
+                    }
+                    else if (result.Success && !result.Found)
+                    {
+                        PatientName = "";
+                        PatientLookupMessage = "⚠️ Patient not found"; // Warning in orange/yellow
+                        System.Diagnostics.Debug.WriteLine("[ViewModel] Patient not found");
+                    }
+                    else
+                    {
+                        PatientName = "";
+                        PatientLookupMessage = $"❌ Error: {result.Error}"; // Error in red
+                        System.Diagnostics.Debug.WriteLine($"[ViewModel] Lookup error: {result.Error}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ViewModel] Exception in LookupPatientAsync: {ex.Message}");
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    IsPatientLookupLoading = false;
+                    PatientName = "";
+                    PatientLookupMessage = $"❌ Error: {ex.Message}";
+                });
             }
         }
 
@@ -320,7 +464,7 @@ namespace AlenkaAssistant.ViewModels
                 // Create the model
                 var purchaseRequest = new PurchaseRequestModel
                 {
-                    UserId = Uid,
+                    UserId = NoRmFormatter.FormatRmForOutput(Uid), // Format RM as A.xxxx
                     GeneralTreatmentDesc = "",
                     AssistantName = AssistantName.None,
                     DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
@@ -339,7 +483,7 @@ namespace AlenkaAssistant.ViewModels
                 }
 
                 // TODO: Save to database or API
-                StatusMessage = $"✓ Purchase request submitted successfully for UID: {Uid}";
+                StatusMessage = $"✓ Purchase request submitted successfully for RM: {purchaseRequest.UserId}";
                 // Clear form after successful submission
                 ClearForm();
             }
@@ -576,7 +720,7 @@ namespace AlenkaAssistant.ViewModels
                     // Create purchase request model from form data
                     var purchaseRequest = new PurchaseRequestModel
                     {
-                        UserId = Uid,
+                        UserId = NoRmFormatter.FormatRmForOutput(Uid), // Format RM as A.xxxx
                         GeneralTreatmentDesc = "",
                         TreatmentType = TreatmentType.Other,
                         DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
@@ -661,7 +805,7 @@ namespace AlenkaAssistant.ViewModels
                     // Create purchase request model from form data
                     var purchaseRequest = new PurchaseRequestModel
                     {
-                        UserId = Uid,
+                        UserId = NoRmFormatter.FormatRmForOutput(Uid), // Format RM as A.xxxx
                         GeneralTreatmentDesc = "",
                         TreatmentType = TreatmentType.Other,
                         DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),

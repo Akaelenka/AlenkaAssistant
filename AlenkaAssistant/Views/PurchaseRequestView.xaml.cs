@@ -1,4 +1,5 @@
 using System;
+using System.Windows;
 using System.Windows.Controls;
 using AlenkaAssistant.ViewModels;
 using AlenkaAssistant.Services;
@@ -19,6 +20,62 @@ namespace AlenkaAssistant.Views
 
             // Load last saved data when view is loaded
             this.Loaded += async (s, e) => await LoadLastSavedDataAsync(viewModel);
+
+            // Hook up RM LostFocus event to trigger patient lookup
+            this.Loaded += (s, e) =>
+            {
+                if (this.FindName("UidTextBox") is TextBox uidTextBox)
+                {
+                    uidTextBox.LostFocus += (sender, eventArgs) =>
+                    {
+                        System.Diagnostics.Debug.WriteLine("[View] Uid TextBox LostFocus triggered");
+                        // The lookup will be triggered automatically by the ViewModel's Uid property setter
+                    };
+                }
+
+                // Subscribe to ViewModel property changes to update patient display visibility
+                viewModel.PropertyChanged += (sender, e) =>
+                {
+                    if (e.PropertyName == nameof(PurchaseRequestViewModel.IsPatientLookupLoading))
+                    {
+                        UpdatePatientDisplayVisibility(viewModel);
+                    }
+                    else if (e.PropertyName == nameof(PurchaseRequestViewModel.PatientName) 
+                             || e.PropertyName == nameof(PurchaseRequestViewModel.PatientLookupMessage))
+                    {
+                        UpdatePatientDisplayVisibility(viewModel);
+                    }
+                };
+            };
+        }
+
+        private void UpdatePatientDisplayVisibility(PurchaseRequestViewModel viewModel)
+        {
+            try
+            {
+                var loadingIndicator = this.FindName("PatientLoadingIndicator") as TextBlock;
+                var patientNameDisplay = this.FindName("PatientNameDisplay") as TextBlock;
+                var patientErrorDisplay = this.FindName("PatientErrorDisplay") as TextBlock;
+
+                if (loadingIndicator != null)
+                {
+                    loadingIndicator.Visibility = viewModel.IsPatientLookupLoading ? Visibility.Visible : Visibility.Collapsed;
+                }
+
+                if (patientNameDisplay != null)
+                {
+                    patientNameDisplay.Visibility = !string.IsNullOrWhiteSpace(viewModel.PatientName) ? Visibility.Visible : Visibility.Collapsed;
+                }
+
+                if (patientErrorDisplay != null)
+                {
+                    patientErrorDisplay.Visibility = !string.IsNullOrWhiteSpace(viewModel.PatientLookupMessage) ? Visibility.Visible : Visibility.Collapsed;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[View] Error updating patient display visibility: {ex.Message}");
+            }
         }
 
         private async System.Threading.Tasks.Task LoadLastSavedDataAsync(PurchaseRequestViewModel viewModel)

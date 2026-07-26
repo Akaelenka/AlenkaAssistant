@@ -10,7 +10,8 @@
         d:DesignHeight="1080" 
         d:DesignWidth="600">
     <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
         <converters:DoctorNameToDisplayItemConverter x:Key="DoctorNameConverter"/>
         <converters:AssistantNameToDisplayItemConverter x:Key="AssistantNameConverter"/>
         <converters:TreatmentTypeToDisplayItemConverter x:Key="TreatmentTypeConverter"/>
@@ -39,13 +40,42 @@
                            FontWeight="SemiBold" 
                            Margin="0,0,0,8"
                            Foreground="#555555"/>
-                <TextBox Text="{Binding Uid, UpdateSourceTrigger=PropertyChanged}" 
+                <TextBox x:Name="UidTextBox"
+                         Text="{Binding Uid, UpdateSourceTrigger=PropertyChanged}" 
                          Height="40" 
                          Padding="12,10" 
                          FontSize="12"
                          Background="White"
                          BorderThickness="1"
                          BorderBrush="#CCCCCC"/>
+
+                <!-- Patient Name Display Area -->
+                <StackPanel Margin="0,8,0,0" x:Name="PatientDisplayPanel">
+                    <!-- Loading Indicator -->
+                    <TextBlock x:Name="PatientLoadingIndicator"
+                               Text="🔄 Loading..."
+                               FontSize="12"
+                               Foreground="#0066CC"
+                               Visibility="Collapsed"
+                               Margin="0,0,0,4"/>
+
+                    <!-- Patient Name (Success - Green) -->
+                    <TextBlock x:Name="PatientNameDisplay"
+                               Text="{Binding PatientName}"
+                               FontSize="12"
+                               Foreground="#228B22"
+                               FontWeight="SemiBold"
+                               Visibility="Collapsed"
+                               Margin="0,0,0,4"/>
+
+                    <!-- Error/Warning Message (Red/Orange) -->
+                    <TextBlock x:Name="PatientErrorDisplay"
+                               Text="{Binding PatientLookupMessage}"
+                               FontSize="11"
+                               Foreground="#D9534F"
+                               Visibility="Collapsed"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
             </StackPanel>
 
 			<!-- Assistant List Section -->
@@ -95,7 +125,7 @@
 										 Margin="10,0,0,0"
 										 Foreground="#555555"
 										 VerticalAlignment="Center"
-										 Visibility="{Binding ShowCustomInput, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+										 Visibility="{Binding ShowCustomInput, Converter={StaticResource BoolToVisibilityConverter}}"/>
 								<Button Command="{Binding DataContext.RemoveAssistantCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
 										CommandParameter="{Binding}" 
 										Content="Hapus" 
@@ -138,7 +168,7 @@
 						 BorderThickness="1"
 						 BorderBrush="#CCCCCC"
 						 Margin="0,8,0,0"
-						 Visibility="{Binding ShowCustomDoctor, Converter={StaticResource BooleanToVisibilityConverter}}"
+						 Visibility="{Binding ShowCustomDoctor, Converter={StaticResource BoolToVisibilityConverter}}"
 						 Foreground="#555555"/>
 			</StackPanel>
 

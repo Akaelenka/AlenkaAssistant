@@ -15,31 +15,80 @@
 const SPREADSHEET_ID = "YOUR_SPREADSHEET_ID";
 
 /**
- * Do NOT modify - Required for web app deployment
+ * Handle POST requests for data submission
  */
 function doPost(e) {
   try {
-	const payload = JSON.parse(e.postData.contents);
-	const sheetName = payload.sheetName || "Sheet1";
-	const appendColumn = payload.appendColumn || null;
+	Logger.log("=== doPost START ===");
+	Logger.log("SPREADSHEET_ID: " + SPREADSHEET_ID);
+	Logger.log("e object exists: " + (e !== null && e !== undefined));
 
-	// Log received data
-	Logger.log("Received payload: " + JSON.stringify(payload));
-	Logger.log("Sheet name: " + sheetName);
-	Logger.log("Append column: " + appendColumn);
-	Logger.log("Values count: " + payload.values.length);
-	if (payload.values.length > 0) {
-	  Logger.log("First row values: " + JSON.stringify(payload.values[0]));
+	if (!e || !e.postData || !e.postData.contents) {
+	  Logger.log("ERROR: No POST data received");
+	  return ContentService
+		.createTextOutput(JSON.stringify({ success: false, error: "No POST data received" }))
+		.setMimeType(ContentService.MimeType.JSON);
 	}
 
-	// Append the data to the sheet
-	const result = appendToSheet(sheetName, payload.values, appendColumn);
+	Logger.log("POST data received, parsing...");
+	const payload = JSON.parse(e.postData.contents);
+	const sheetName = payload.sheetName || "Sheet1";
+	const appendColumn = payload.appendColumn !== undefined ? payload.appendColumn : null;
 
+	Logger.log("Sheet Name: " + sheetName);
+	Logger.log("Append Column: " + appendColumn);
+	Logger.log("Values count: " + (payload.values ? payload.values.length : "undefined"));
+
+	if (!payload.values || !Array.isArray(payload.values) || payload.values.length === 0) {
+	  Logger.log("ERROR: No values to append");
+	  return ContentService
+		.createTextOutput(JSON.stringify({ success: false, error: "No values to append" }))
+		.setMimeType(ContentService.MimeType.JSON);
+	}
+
+	Logger.log("Calling appendToSheet...");
+	const result = appendToSheet(sheetName, payload.values, appendColumn);
+	Logger.log("appendToSheet completed successfully");
+
+	Logger.log("=== doPost SUCCESS ===");
 	return ContentService
 	  .createTextOutput(JSON.stringify({ success: true, message: "Data appended successfully", result: result }))
 	  .setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
-	Logger.log("Error in doPost: " + error.toString());
+	Logger.log("=== doPost ERROR ===");
+	Logger.log("Error type: " + error.name);
+	Logger.log("Error message: " + error.toString());
+	Logger.log("Stack: " + error.stack);
+
+	return ContentService
+	  .createTextOutput(JSON.stringify({ success: false, error: error.toString(), errorName: error.name }))
+	  .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Handle GET requests for patient lookup
+ */
+function doGet(e) {
+  try {
+	const action = e.parameter.action || "lookup";
+	const sheetName = e.parameter.sheetName || "NoRM";
+	const searchColumn = parseInt(e.parameter.searchColumn || 0);
+	const searchValue = (e.parameter.searchValue || "").trim();
+	const resultColumn = parseInt(e.parameter.resultColumn || 1);
+
+	if (action === "lookup") {
+	  const result = lookupPatientData(sheetName, searchColumn, searchValue, resultColumn);
+	  return ContentService
+		.createTextOutput(JSON.stringify(result))
+		.setMimeType(ContentService.MimeType.JSON);
+	}
+
+	return ContentService
+	  .createTextOutput(JSON.stringify({ success: false, error: "Unknown action" }))
+	  .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+	Logger.log("Error in doGet: " + error.toString());
 	return ContentService
 	  .createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
 	  .setMimeType(ContentService.MimeType.JSON);
@@ -47,95 +96,159 @@ function doPost(e) {
 }
 
 /**
- * Append data to a specific sheet
- * @param {string} sheetName - Name of the sheet to append to
- * @param {Array<Array>} values - 2D array of values to append
- * @param {number} appendColumn - Column to check for last empty row (0-based index). If null, uses getLastRow()
- * @returns {Object} Append operation details
+ * Lookup patient data from a sheet
  */
-function appendToSheet(sheetName, values, appendColumn) {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(sheetName);
+function lookupPatientData(sheetName, searchColumn, searchValue, resultColumn) {
+  try {
+	const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+	const sheet = ss.getSheetByName(sheetName);
 
-  if (!sheet) {
-	throw new Error(`Sheet "${sheetName}" not found`);
-  }
+	if (!sheet) {
+	  return { success: false, error: "Sheet not found: " + sheetName };
+	}
 
-  // Determine the starting row
-  let startRow;
-  if (appendColumn !== null && appendColumn !== undefined) {
-	// Find the first empty row in the specified column (1-based for getRange)
-	const columnLetter = String.fromCharCode(65 + appendColumn); // Convert 0-based to A, B, C, etc.
-	const columnRange = sheet.getRange(columnLetter + ":" + columnLetter);
-	const columnData = columnRange.getValues();
+	if (!searchValue || searchValue.length === 0) {
+	  return { success: false, error: "Search value is empty" };
+	}
 
-	Logger.log("Column letter: " + columnLetter);
-	Logger.log("Column data length: " + columnData.length);
+	const columnLetter = String.fromCharCode(65 + searchColumn);
+	const columnData = sheet.getRange(columnLetter + ":" + columnLetter).getValues();
 
-	// Find first empty cell from top to bottom
-	startRow = null;
+	// Search for matching RM with zero-padding support
 	for (let i = 0; i < columnData.length; i++) {
-	  const cellValue = columnData[i][0];
-	  if (cellValue === "" || cellValue === null || cellValue === undefined) {
-		startRow = i + 1; // Convert to 1-based row number
-		Logger.log("Found first empty cell at row: " + startRow);
-		break;
+	  const cellValue = String(columnData[i][0]).trim();
+
+	  // Match various formats: "A.0032", "A.32", "0032", "32"
+	  const isMatch = cellValue === searchValue ||
+					  cellValue === "A." + searchValue ||
+					  cellValue.endsWith("." + searchValue) ||
+					  cellValue === searchValue.replace(/^0+/, '') ||
+					  cellValue === "A." + searchValue.replace(/^0+/, '');
+
+	  if (isMatch) {
+		const resultColumnLetter = String.fromCharCode(65 + resultColumn);
+		const patientName = sheet.getRange(resultColumnLetter + (i + 1)).getValue();
+
+		return {
+		  success: true,
+		  found: true,
+		  patientName: String(patientName).trim(),
+		  rmValue: cellValue,
+		  rowNumber: i + 1
+		};
 	  }
 	}
 
-	// If no empty cell found, append after last row
-	if (startRow === null) {
-	  startRow = sheet.getLastRow() + 1;
-	  Logger.log("No empty cells found, appending after last row: " + startRow);
-	}
-  } else {
-	// Fallback to original behavior: last row with any data
-	const lastRow = sheet.getLastRow();
-	startRow = lastRow + 1;
-	Logger.log("No appendColumn specified, using getLastRow() behavior: " + startRow);
+	return {
+	  success: true,
+	  found: false,
+	  error: "Patient not found"
+	};
+  } catch (error) {
+	Logger.log("Error in lookupPatientData: " + error.toString());
+	return { success: false, error: error.toString() };
   }
-
-  Logger.log("Appending to sheet: " + sheetName);
-  Logger.log("Using appendColumn: " + appendColumn);
-  Logger.log("Start row: " + startRow);
-  Logger.log("Number of rows to append: " + values.length);
-  Logger.log("Columns per row: " + (values.length > 0 ? values[0].length : 0));
-
-  // Ensure we have data
-  if (!values || values.length === 0) {
-	throw new Error("No values to append");
-  }
-
-  // Get the number of columns
-  const numCols = values[0].length;
-
-  // Append the rows
-  const range = sheet.getRange(startRow, 1, values.length, numCols);
-  range.setValues(values);
-
-  Logger.log("Successfully appended data to range: " + range.getA1Notation());
-
-  return {
-	appendedRows: values.length,
-	startRow: startRow,
-	sheetName: sheetName,
-	columnsAppended: numCols
-  };
 }
 
 /**
- * Test function - Run this to test locally before deployment
- * Open Execution Log (Ctrl+Enter) to see output
+ * Append data to a specific sheet
+ */
+function appendToSheet(sheetName, values, appendColumn) {
+  try {
+	Logger.log("=== appendToSheet START ===");
+	Logger.log("Sheet Name: " + sheetName);
+	Logger.log("Values: " + values.length + " rows");
+	Logger.log("Append Column: " + appendColumn);
+
+	Logger.log("Opening spreadsheet...");
+	const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+	Logger.log("Spreadsheet opened successfully");
+
+	Logger.log("Getting sheet: " + sheetName);
+	const sheet = ss.getSheetByName(sheetName);
+
+	if (!sheet) {
+	  Logger.log("ERROR: Sheet not found - " + sheetName);
+	  throw new Error("Sheet not found: " + sheetName);
+	}
+	Logger.log("Sheet found successfully");
+
+	if (!values || values.length === 0) {
+	  Logger.log("ERROR: No values to append");
+	  throw new Error("No values to append");
+	}
+
+	let startRow;
+	Logger.log("Determining start row...");
+
+	if (appendColumn !== null && appendColumn !== undefined) {
+	  Logger.log("Using appendColumn logic for column: " + appendColumn);
+	  const columnLetter = String.fromCharCode(65 + appendColumn);
+	  Logger.log("Column letter: " + columnLetter);
+
+	  const columnData = sheet.getRange(columnLetter + ":" + columnLetter).getValues();
+	  Logger.log("Column data retrieved, length: " + columnData.length);
+
+	  startRow = null;
+	  for (let i = 0; i < columnData.length; i++) {
+		const cellValue = columnData[i][0];
+		if (cellValue === "" || cellValue === null || cellValue === undefined) {
+		  startRow = i + 1;
+		  Logger.log("Found first empty cell at row: " + startRow);
+		  break;
+		}
+	  }
+
+	  if (startRow === null) {
+		const lastRow = sheet.getLastRow();
+		startRow = lastRow + 1;
+		Logger.log("No empty cells found, using last row + 1: " + startRow);
+	  }
+	} else {
+	  const lastRow = sheet.getLastRow();
+	  startRow = lastRow + 1;
+	  Logger.log("No appendColumn specified, using last row + 1: " + startRow);
+	}
+
+	Logger.log("Final start row: " + startRow);
+	const numCols = values[0].length;
+	Logger.log("Number of columns: " + numCols);
+	Logger.log("Setting values...");
+
+	const range = sheet.getRange(startRow, 1, values.length, numCols);
+	range.setValues(values);
+
+	Logger.log("Values set successfully");
+	Logger.log("=== appendToSheet SUCCESS ===");
+
+	return {
+	  appendedRows: values.length,
+	  startRow: startRow,
+	  sheetName: sheetName,
+	  columnsAppended: numCols
+	};
+  } catch (error) {
+	Logger.log("=== appendToSheet ERROR ===");
+	Logger.log("Error type: " + error.name);
+	Logger.log("Error message: " + error.toString());
+	Logger.log("Stack: " + error.stack);
+	throw error;
+  }
+}
+
+/**
+ * Test function
  */
 function test() {
-  const testData = {
-	sheetName: "Sheet1",
-	values: [
-	  ["2024", "JANUARI", "15", "100000", "50000", "RM001", "Test Treatment", "Rawat Jalan", "Dr. Smith", "Nurse A"]
-	]
-  };
-
   try {
-	const result = appendToSheet(testData.sheetName, testData.values);
+	const testData = {
+	  sheetName: "2026",
+	  values: [
+		["2024", "JANUARI", "15", "100000", "50000", "0", "RM001", "Test Treatment", "Rawat Jalan", "Dr. Smith"]
+	  ]
+	};
+
+	const result = appendToSheet(testData.sheetName, testData.values, 1);
 	Logger.log("Test successful: " + JSON.stringify(result));
   } catch (error) {
 	Logger.log("Test failed: " + error.toString());

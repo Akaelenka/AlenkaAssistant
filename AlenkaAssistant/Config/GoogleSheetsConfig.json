@@ -28,5 +28,11 @@
     "drg. Novi",
     "drg. Lala",
     "Other"
-  ]
+  ],
+  "patientLookup": {
+    "sheetName": "NoRM",
+    "rmColumn": 0,
+    "patientNameColumn": 1
+  }
 }
+

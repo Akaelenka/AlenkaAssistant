@@ -14,6 +14,7 @@ namespace AlenkaAssistant.Services
     {
         private List<string> _assistantNames = new();
         private List<string> _doctorNames = new();
+        private string _deploymentUrl = string.Empty;
 
         /// <summary>
         /// Load dropdown configuration from GoogleSheetsConfig.json
@@ -30,6 +31,12 @@ namespace AlenkaAssistant.Services
                 var json = await File.ReadAllTextAsync(configPath);
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var config = JsonSerializer.Deserialize<JsonElement>(json, options);
+
+                // Load deployment URL
+                if (config.TryGetProperty("deploymentUrl", out var deploymentUrlElement))
+                {
+                    _deploymentUrl = deploymentUrlElement.GetString() ?? string.Empty;
+                }
 
                 // Load assistant names
                 if (config.TryGetProperty("assistantNames", out var assistantNamesElement))
@@ -128,6 +135,14 @@ namespace AlenkaAssistant.Services
         public List<string> GetDoctorNamesList()
         {
             return new List<string>(_doctorNames);
+        }
+
+        /// <summary>
+        /// Get deployment URL for Google Apps Script
+        /// </summary>
+        public string GetDeploymentUrl()
+        {
+            return _deploymentUrl;
         }
     }
 }
