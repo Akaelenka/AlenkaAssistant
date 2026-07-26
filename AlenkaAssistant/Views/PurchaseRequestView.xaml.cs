@@ -90,14 +90,31 @@ namespace AlenkaAssistant.Views
                     // Populate form with last saved data
                     viewModel.Uid = lastSavedRequest.UserId ?? "";
                     viewModel.SelectedTreatmentType = lastSavedRequest.TreatmentType;
-                    viewModel.SelectedDoctorName = lastSavedRequest.DoctorName.HasValue
-                        ? (lastSavedRequest.DoctorName == DoctorName.Other 
-                            ? (lastSavedRequest.AltDoctorName ?? "Other")
-                            : DoctorNameHelper.GetDisplayName(lastSavedRequest.DoctorName.Value))
-                        : "Other";
+
+                    // Fix: Properly load doctor name
+                    if (lastSavedRequest.DoctorName.HasValue)
+                    {
+                        if (lastSavedRequest.DoctorName == DoctorName.Other)
+                        {
+                            // When Other is selected, use the custom doctor name
+                            viewModel.SelectedDoctorName = "Other";
+                            viewModel.CustomDoctorName = lastSavedRequest.AltDoctorName ?? "";
+                        }
+                        else
+                        {
+                            // Use the display name from the enum
+                            viewModel.SelectedDoctorName = DoctorNameHelper.GetDisplayName(lastSavedRequest.DoctorName.Value);
+                            viewModel.CustomDoctorName = "";
+                        }
+                    }
+                    else
+                    {
+                        viewModel.SelectedDoctorName = "Other";
+                        viewModel.CustomDoctorName = "";
+                    }
+
                     viewModel.SelectedDate = lastSavedRequest.CreatedAt.Date;
                     viewModel.SelectedTime = lastSavedRequest.CreatedAt.ToString("HH:mm");
-                    viewModel.CustomDoctorName = lastSavedRequest.AltDoctorName ?? "";
 
                     // Populate assistants list
                     if (lastSavedRequest.AltAssistantName != null)
@@ -130,7 +147,8 @@ namespace AlenkaAssistant.Views
                                 Cost = cost.Cost,
                                 TreatmentType = cost.TreatmentType,
                                 RM = cost.RM,
-                                Month = cost.Month
+                                Month = cost.Month,
+                                Discount = cost.Discount
                             });
                         }
                     }

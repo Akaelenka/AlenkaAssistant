@@ -252,6 +252,7 @@ namespace AlenkaAssistant.ViewModels
         public ICommand RemoveAssistantCommand { get; }
         public ICommand SaveToGoogleSheetsCommand { get; }
         public ICommand SaveLocalCommand { get; }
+        public ICommand PrintCommand { get; }
 
         public PurchaseRequestViewModel()
         {
@@ -295,6 +296,7 @@ namespace AlenkaAssistant.ViewModels
             RemoveAssistantCommand = new RelayCommand(obj => RemoveAssistant(obj));
             SaveToGoogleSheetsCommand = new RelayCommand(_ => SaveToGoogleSheetsAsync(), _ => CanSaveToGoogleSheets());
             SaveLocalCommand = new RelayCommand(_ => SaveLocalAsync(), _ => CanSaveLocal());
+            PrintCommand = new RelayCommand(_ => Print(), _ => CanPrint());
         }
 
         private async void LoadDropdownConfigAsync()
@@ -722,7 +724,7 @@ namespace AlenkaAssistant.ViewModels
                     {
                         UserId = NoRmFormatter.FormatRmForOutput(Uid), // Format RM as A.xxxx
                         GeneralTreatmentDesc = "",
-                        TreatmentType = TreatmentType.Other,
+                        TreatmentType = TreatmentType.Lainnya,
                         DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
                         CreatedAt = GetDateTimeFromInputs(),
                         TotalCost = TotalCost,
@@ -807,7 +809,7 @@ namespace AlenkaAssistant.ViewModels
                     {
                         UserId = NoRmFormatter.FormatRmForOutput(Uid), // Format RM as A.xxxx
                         GeneralTreatmentDesc = "",
-                        TreatmentType = TreatmentType.Other,
+                        TreatmentType = TreatmentType.Lainnya,
                         DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
                         CreatedAt = GetDateTimeFromInputs(),
                         TotalCost = TotalCost,
@@ -866,11 +868,84 @@ namespace AlenkaAssistant.ViewModels
             });
         }
 
+        private bool CanPrint()
+        {
+            // Can print if basic fields are filled
+            return !string.IsNullOrWhiteSpace(Uid) && CostsList.Count > 0;
+        }
+
+        private void Print()
+        {
+            try
+            {
+                StatusMessage = "Generating print preview...";
+
+                var printService = new PrintService();
+
+                // Generate the invoice document from CURRENT form data (without modifying it)
+                var doc = printService.GenerateInvoiceDocument(BuildPurchaseRequestModel(), PatientName);
+
+                // Create and show the print preview window
+                // NOTE: This does NOT clear or modify any form data - it's preview only
+                var previewWindow = new global::AlenkaAssistant.Views.PrintPreviewWindow(doc, "Alenka Invoice - Print Preview");
+                previewWindow.ShowDialog();
+
+                // After preview closes, form data remains unchanged
+                StatusMessage = "Print preview closed";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"✗ Error printing: {ex.Message}";
+            }
+        }
+
+        private PurchaseRequestModel BuildPurchaseRequestModel()
+        {
+            var model = new PurchaseRequestModel
+            {
+                UserId = NoRmFormatter.FormatRmForOutput(Uid),
+                GeneralTreatmentDesc = "",
+                TreatmentType = TreatmentType.Lainnya,
+                DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
+                CreatedAt = GetDateTimeFromInputs(),
+                TotalCost = TotalCost,
+                AltAssistantName = new List<string>(),
+                CostDetails = new List<CostModel>(),
+                AltDoctorName = SelectedDoctorName == "Other" ? CustomDoctorName : null
+            };
+
+            // Add assistant names
+            foreach (var assistant in AssistantsList)
+            {
+                string assistantName = assistant.SelectedAssistantName == "Other" 
+                    ? (assistant.CustomAssistantName ?? "")
+                    : assistant.SelectedAssistantName;
+                model.AltAssistantName.Add(assistantName);
+            }
+
+            // Add costs
+            foreach (var cost in CostsList)
+            {
+                model.CostDetails.Add(new CostModel 
+                { 
+                    TreatmentDesc = cost.TreatmentDesc, 
+                    Cost = cost.Cost,
+                    TreatmentType = cost.TreatmentType,
+                    Discount = cost.Discount,
+                    RM = cost.RM,
+                    Month = cost.Month
+                });
+            }
+
+            return model;
+        }
+
         public event System.ComponentModel.PropertyChangedEventHandler PropertyChanged;
 
         protected void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
         }
+
     }
 }

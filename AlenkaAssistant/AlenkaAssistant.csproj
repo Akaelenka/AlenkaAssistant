@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,8 +22,12 @@
     </None>
   </ItemGroup>
 
-  <Target Name="UnblockDlls" AfterTargets="Build">
-    <Exec Command="powershell.exe -Command &quot;Get-ChildItem -Path '$(OutDir)' -Recurse -Filter '*.dll' -ErrorAction SilentlyContinue | ForEach-Object { Remove-Item -Path ($_.FullName + ':Zone.Identifier') -ErrorAction SilentlyContinue; $_ | Unblock-File -ErrorAction SilentlyContinue }; Write-Host 'Unblocked all DLLs'&quot;" ContinueOnError="true" />
+  <Target Name="PreUnblockDlls" BeforeTargets="Build">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -Command &quot;Get-ChildItem -Path '$(OutDir)' -Filter '*.dll' -ErrorAction SilentlyContinue 2>/dev/null | ForEach-Object { Remove-Item -LiteralPath ($_.FullName + ':Zone.Identifier') -Force -ErrorAction SilentlyContinue; Unblock-File -LiteralPath $_.FullName -ErrorAction SilentlyContinue }; Get-ChildItem -Path '$(OutDir)' -Filter '*.pdb' -ErrorAction SilentlyContinue 2>/dev/null | ForEach-Object { Remove-Item -LiteralPath ($_.FullName + ':Zone.Identifier') -Force -ErrorAction SilentlyContinue; Unblock-File -LiteralPath $_.FullName -ErrorAction SilentlyContinue }&quot;" ContinueOnError="true" />
+  </Target>
+
+  <Target Name="PostUnblockDlls" AfterTargets="Build">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -Command &quot;Get-ChildItem -Path '$(OutDir)' -Filter '*.dll' -ErrorAction SilentlyContinue 2>/dev/null | ForEach-Object { Remove-Item -LiteralPath ($_.FullName + ':Zone.Identifier') -Force -ErrorAction SilentlyContinue; Unblock-File -LiteralPath $_.FullName -ErrorAction SilentlyContinue; Write-Host ('Unblocked: ' + $_.Name) }; Get-ChildItem -Path '$(OutDir)' -Filter '*.pdb' -ErrorAction SilentlyContinue 2>/dev/null | ForEach-Object { Remove-Item -LiteralPath ($_.FullName + ':Zone.Identifier') -Force -ErrorAction SilentlyContinue; Unblock-File -LiteralPath $_.FullName -ErrorAction SilentlyContinue }&quot;" ContinueOnError="true" />
   </Target>
 
 </Project>
