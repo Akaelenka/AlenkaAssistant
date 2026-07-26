@@ -4,6 +4,7 @@
   "sheetName": "Sheet1",
   "enabled": false
   "appendColumn": 1,
+  "paperSize": "A5",
   "columnMapping": {
     "year": 0,
     "month": 2,
@@ -26,8 +27,7 @@
   ],
   "doctorNames": [
     "drg. Novi",
-    "drg. Lala",
-    "Other"
+    "drg. Diozola"
   ],
   "patientLookup": {
     "sheetName": "NoRM",

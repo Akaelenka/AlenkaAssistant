@@ -15,6 +15,7 @@ namespace AlenkaAssistant.Services
         private List<string> _assistantNames = new();
         private List<string> _doctorNames = new();
         private string _deploymentUrl = string.Empty;
+        private string _paperSize = "A4";
 
         /// <summary>
         /// Load dropdown configuration from GoogleSheetsConfig.json
@@ -67,6 +68,16 @@ namespace AlenkaAssistant.Services
                                 _doctorNames.Add(name);
                             }
                         }
+                    }
+                }
+
+                // Load paper size
+                if (config.TryGetProperty("paperSize", out var paperSizeElement))
+                {
+                    var paperSize = paperSizeElement.GetString();
+                    if (!string.IsNullOrWhiteSpace(paperSize))
+                    {
+                        _paperSize = paperSize;
                     }
                 }
 
@@ -135,6 +146,14 @@ namespace AlenkaAssistant.Services
         public List<string> GetDoctorNamesList()
         {
             return new List<string>(_doctorNames);
+        }
+
+        /// <summary>
+        /// Get configured paper size for printing
+        /// </summary>
+        public string GetPaperSize()
+        {
+            return _paperSize;
         }
 
         /// <summary>

@@ -82,29 +82,47 @@ namespace AlenkaAssistant.Views
         {
             try
             {
+                // Wait a moment for the ViewModel to initialize dropdowns
+                await System.Threading.Tasks.Task.Delay(500);
+
                 var localDataService = new LocalDataService();
                 var lastSavedRequest = await localDataService.LoadLastPurchaseRequestAsync();
 
                 if (lastSavedRequest != null)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[LoadData] Loaded UserId: '{lastSavedRequest.UserId}'");
+
                     // Populate form with last saved data
                     viewModel.Uid = lastSavedRequest.UserId ?? "";
+                    System.Diagnostics.Debug.WriteLine($"[LoadData] Set Uid to: '{viewModel.Uid}'");
+
                     viewModel.SelectedTreatmentType = lastSavedRequest.TreatmentType;
 
-                    // Fix: Properly load doctor name
+                    // Fix: Properly load doctor name - ensure it's in the dropdown or set to Other
                     if (lastSavedRequest.DoctorName.HasValue)
                     {
-                        if (lastSavedRequest.DoctorName == DoctorName.Other)
+                        string displayName = DoctorNameHelper.GetDisplayName(lastSavedRequest.DoctorName.Value);
+
+                        // Check if the display name is in the available doctor names
+                        if (viewModel.DoctorNames != null && viewModel.DoctorNames.Contains(displayName))
                         {
-                            // When Other is selected, use the custom doctor name
+                            viewModel.SelectedDoctorName = displayName;
+                            viewModel.CustomDoctorName = "";
+                        }
+                        else if (lastSavedRequest.DoctorName == DoctorName.Other && !string.IsNullOrWhiteSpace(lastSavedRequest.AltDoctorName))
+                        {
+                            // Use the custom doctor name if it was saved as Other
                             viewModel.SelectedDoctorName = "Other";
-                            viewModel.CustomDoctorName = lastSavedRequest.AltDoctorName ?? "";
+                            viewModel.CustomDoctorName = lastSavedRequest.AltDoctorName;
                         }
                         else
                         {
-                            // Use the display name from the enum
-                            viewModel.SelectedDoctorName = DoctorNameHelper.GetDisplayName(lastSavedRequest.DoctorName.Value);
-                            viewModel.CustomDoctorName = "";
+                            // Fallback: try the first doctor in the list
+                            if (viewModel.DoctorNames != null && viewModel.DoctorNames.Count > 0)
+                            {
+                                viewModel.SelectedDoctorName = viewModel.DoctorNames[0];
+                                viewModel.CustomDoctorName = "";
+                            }
                         }
                     }
                     else
@@ -122,14 +140,15 @@ namespace AlenkaAssistant.Views
                         viewModel.AssistantsList.Clear();
                         foreach (var assistantName in lastSavedRequest.AltAssistantName)
                         {
+                            // Check if this name is in the available dropdown list
+                            bool isInList = viewModel.AssistantNamesForList != null && viewModel.AssistantNamesForList.Contains(assistantName);
+
                             var assistantModel = new AssistantModel
                             {
-                                SelectedAssistantName = assistantName == "Other" || !viewModel.AssistantNamesForList.Contains(assistantName) 
-                                    ? "Other" 
-                                    : assistantName,
-                                CustomAssistantName = assistantName == "Other" || !viewModel.AssistantNamesForList.Contains(assistantName) 
-                                    ? assistantName 
-                                    : null
+                                // If name is in the dropdown list, use it directly; otherwise mark as "Other"
+                                SelectedAssistantName = isInList ? assistantName : "Other",
+                                // If not in list, store the custom name; otherwise null
+                                CustomAssistantName = isInList ? null : assistantName
                             };
                             viewModel.AssistantsList.Add(assistantModel);
                         }

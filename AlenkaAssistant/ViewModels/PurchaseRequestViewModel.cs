@@ -44,6 +44,7 @@ namespace AlenkaAssistant.ViewModels
         private bool _showCustomDoctor;
 
         private PatientLookupService _patientLookupService;
+        private DropdownConfigService _dropdownConfigService;
         private string _patientName;
         private string _patientLookupMessage;
         private bool _isPatientLookupLoading;
@@ -303,15 +304,15 @@ namespace AlenkaAssistant.ViewModels
         {
             try
             {
-                var dropdownConfigService = new DropdownConfigService();
+                _dropdownConfigService = new DropdownConfigService();
                 string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config", "GoogleSheetsConfig.json");
 
-                bool loaded = await dropdownConfigService.LoadDropdownConfigAsync(configPath);
+                bool loaded = await _dropdownConfigService.LoadDropdownConfigAsync(configPath);
 
                 if (loaded)
                 {
-                    AssistantNamesForList = dropdownConfigService.GetAssistantNames();
-                    DoctorNames = dropdownConfigService.GetDoctorNames();
+                    AssistantNamesForList = _dropdownConfigService.GetAssistantNames();
+                    DoctorNames = _dropdownConfigService.GetDoctorNames();
                     OnPropertyChanged(nameof(AssistantNamesForList));
                     OnPropertyChanged(nameof(DoctorNames));
 
@@ -324,7 +325,7 @@ namespace AlenkaAssistant.ViewModels
                     // Initialize PatientLookupService with deployment URL
                     try
                     {
-                        string deploymentUrl = dropdownConfigService.GetDeploymentUrl();
+                        string deploymentUrl = _dropdownConfigService.GetDeploymentUrl();
                         if (!string.IsNullOrWhiteSpace(deploymentUrl))
                         {
                             _patientLookupService = new PatientLookupService(deploymentUrl);
@@ -818,6 +819,9 @@ namespace AlenkaAssistant.ViewModels
                         AltDoctorName = SelectedDoctorName == "Other" ? CustomDoctorName : null
                     };
 
+                    System.Diagnostics.Debug.WriteLine($"[SaveData] Original Uid: '{Uid}'");
+                    System.Diagnostics.Debug.WriteLine($"[SaveData] Formatted UserId: '{purchaseRequest.UserId}'");
+
                     // Add assistant names to AltAssistantName list
                     foreach (var assistant in AssistantsList)
                     {
@@ -882,8 +886,11 @@ namespace AlenkaAssistant.ViewModels
 
                 var printService = new PrintService();
 
+                // Get paper size from config, default to A4
+                string paperSize = _dropdownConfigService?.GetPaperSize() ?? "A4";
+
                 // Generate the invoice document from CURRENT form data (without modifying it)
-                var doc = printService.GenerateInvoiceDocument(BuildPurchaseRequestModel(), PatientName);
+                var doc = printService.GenerateInvoiceDocument(BuildPurchaseRequestModel(), PatientName, paperSize);
 
                 // Create and show the print preview window
                 // NOTE: This does NOT clear or modify any form data - it's preview only
