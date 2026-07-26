@@ -32,7 +32,6 @@ namespace AlenkaAssistant.Views
                 {
                     // Populate form with last saved data
                     viewModel.Uid = lastSavedRequest.UserId ?? "";
-                    viewModel.TreatmentDescription = lastSavedRequest.GeneralTreatmentDesc ?? "";
                     viewModel.SelectedTreatmentType = lastSavedRequest.TreatmentType;
                     viewModel.SelectedDoctorName = lastSavedRequest.DoctorName.HasValue
                         ? (lastSavedRequest.DoctorName == DoctorName.Other 
@@ -71,7 +70,10 @@ namespace AlenkaAssistant.Views
                             viewModel.CostsList.Add(new CostModel 
                             { 
                                 TreatmentDesc = cost.TreatmentDesc, 
-                                Cost = cost.Cost 
+                                Cost = cost.Cost,
+                                TreatmentType = cost.TreatmentType,
+                                RM = cost.RM,
+                                Month = cost.Month
                             });
                         }
                     }

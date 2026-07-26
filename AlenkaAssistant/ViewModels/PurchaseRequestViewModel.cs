@@ -35,7 +35,6 @@ namespace AlenkaAssistant.ViewModels
     public class PurchaseRequestViewModel : INotifyPropertyChanged
     {
         private string _uid;
-        private string _treatmentDescription;
         private TreatmentType? _selectedTreatmentType;
         private DateTime? _selectedDate;
         private string _selectedTime;
@@ -52,19 +51,6 @@ namespace AlenkaAssistant.ViewModels
                 {
                     _uid = value;
                     OnPropertyChanged(nameof(Uid));
-                }
-            }
-        }
-
-        public string TreatmentDescription
-        {
-            get => _treatmentDescription;
-            set
-            {
-                if (_treatmentDescription != value)
-                {
-                    _treatmentDescription = value;
-                    OnPropertyChanged(nameof(TreatmentDescription));
                 }
             }
         }
@@ -195,7 +181,7 @@ namespace AlenkaAssistant.ViewModels
                 int total = 0;
                 foreach (var item in CostsList)
                 {
-                    total += item.Cost;
+                    total += item.Cost - item.Discount;
                 }
                 return total;
             }
@@ -240,13 +226,12 @@ namespace AlenkaAssistant.ViewModels
             LoadDropdownConfigAsync();
 
             // Set defaults
-            SelectedDoctorName = DoctorNames?.Count > 0 ? DoctorNames[0] : "Other";
             SelectedDate = DateTime.Today;
             SelectedTime = DateTime.Now.ToString("HH:mm");
 
             // Initialize commands
             SubmitCommand = new RelayCommand(_ => SubmitRequest(), _ => CanSubmit());
-            CancelCommand = new RelayCommand(_ => CancelRequest());
+            CancelCommand = new RelayCommand(_ => CancelRequestAsync());
             AddCostCommand = new RelayCommand(_ => AddCost());
             RemoveCostCommand = new RelayCommand(obj => RemoveCost(obj), obj => CanRemoveCost(obj));
             AddAssistantCommand = new RelayCommand(_ => AddAssistant());
@@ -270,12 +255,19 @@ namespace AlenkaAssistant.ViewModels
                     DoctorNames = dropdownConfigService.GetDoctorNames();
                     OnPropertyChanged(nameof(AssistantNamesForList));
                     OnPropertyChanged(nameof(DoctorNames));
+
+                    // Set default doctor name to first in config
+                    if (DoctorNames?.Count > 0)
+                    {
+                        SelectedDoctorName = DoctorNames[0];
+                    }
                 }
                 else
                 {
                     // Fallback to defaults if config loading fails
                     AssistantNamesForList = new ObservableCollection<string> { "Pavela", "Ana", "Other" };
                     DoctorNames = new ObservableCollection<string> { "Drg. Novi", "Drg. Rina", "Other" };
+                    SelectedDoctorName = DoctorNames[0];
                 }
             }
             catch (Exception ex)
@@ -284,6 +276,7 @@ namespace AlenkaAssistant.ViewModels
                 // Use defaults
                 AssistantNamesForList = new ObservableCollection<string> { "Pavela", "Ana", "Other" };
                 DoctorNames = new ObservableCollection<string> { "Drg. Novi", "Drg. Rina", "Other" };
+                SelectedDoctorName = DoctorNames[0];
             }
         }
 
@@ -328,7 +321,7 @@ namespace AlenkaAssistant.ViewModels
                 var purchaseRequest = new PurchaseRequestModel
                 {
                     UserId = Uid,
-                    GeneralTreatmentDesc = TreatmentDescription,
+                    GeneralTreatmentDesc = "",
                     AssistantName = AssistantName.None,
                     DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
                     CreatedAt = GetDateTimeFromInputs(),
@@ -356,10 +349,19 @@ namespace AlenkaAssistant.ViewModels
             }
         }
 
-        private void CancelRequest()
+        private async void CancelRequestAsync()
         {
+            // Delete from local storage
+            var localDataService = new LocalDataService();
+            var lastSavedRequest = await localDataService.LoadLastPurchaseRequestAsync();
+
+            if (lastSavedRequest != null)
+            {
+                await localDataService.DeletePurchaseRequestAsync(lastSavedRequest.Id);
+            }
+
             ClearForm();
-            StatusMessage = "Form cleared.";
+            StatusMessage = "✓ Data cleared. Batal successful.";
         }
 
         private DateTime GetDateTimeFromInputs()
@@ -378,8 +380,31 @@ namespace AlenkaAssistant.ViewModels
             }
             catch
             {
-                return DateTime.Now;
+                return DateTime.Today;
             }
+        }
+
+        /// <summary>
+        /// Get Indonesian month name from month number
+        /// </summary>
+        private string GetIndonesianMonth(int month)
+        {
+            return month switch
+            {
+                1 => "JANUARI",
+                2 => "FEBRUARI",
+                3 => "MARET",
+                4 => "APRIL",
+                5 => "MEI",
+                6 => "JUNI",
+                7 => "JULI",
+                8 => "AGUSTUS",
+                9 => "SEPTEMBER",
+                10 => "OKTOBER",
+                11 => "NOVEMBER",
+                12 => "DESEMBER",
+                _ => ""
+            };
         }
 
         private DoctorName ConvertDoctorNameStringToEnum(string doctorNameString)
@@ -403,7 +428,6 @@ namespace AlenkaAssistant.ViewModels
         private void ClearForm()
         {
             Uid = string.Empty;
-            TreatmentDescription = string.Empty;
             SelectedDoctorName = DoctorNames?.Count > 0 ? DoctorNames[0] : "Other";
             SelectedDate = DateTime.Today;
             SelectedTime = DateTime.Now.ToString("HH:mm");
@@ -418,7 +442,15 @@ namespace AlenkaAssistant.ViewModels
 
         private void AddCost()
         {
-            CostsList.Add(new CostModel { TreatmentDesc = string.Empty, Cost = 0 });
+            var newCost = new CostModel 
+            { 
+                TreatmentDesc = string.Empty, 
+                Cost = 0,
+                TreatmentType = null,
+                RM = Uid,
+                Month = GetIndonesianMonth(SelectedDate?.Month ?? DateTime.Now.Month)
+            };
+            CostsList.Add(newCost);
             OnPropertyChanged(nameof(TotalCost));
         }
 
@@ -463,8 +495,8 @@ namespace AlenkaAssistant.ViewModels
 
         private void CostItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            // Update total cost whenever a cost item's Cost or TreatmentDesc property changes
-            if (e.PropertyName == nameof(CostModel.Cost) || e.PropertyName == nameof(CostModel.TreatmentDesc))
+            // Update total cost whenever a cost item's Cost, Discount, or TreatmentDesc property changes
+            if (e.PropertyName == nameof(CostModel.Cost) || e.PropertyName == nameof(CostModel.TreatmentDesc) || e.PropertyName == nameof(CostModel.Discount))
             {
                 OnPropertyChanged(nameof(TotalCost));
             }
@@ -545,8 +577,8 @@ namespace AlenkaAssistant.ViewModels
                     var purchaseRequest = new PurchaseRequestModel
                     {
                         UserId = Uid,
-                        GeneralTreatmentDesc = TreatmentDescription,
-                        TreatmentType = SelectedTreatmentType ?? TreatmentType.Other,
+                        GeneralTreatmentDesc = "",
+                        TreatmentType = TreatmentType.Other,
                         DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
                         CreatedAt = GetDateTimeFromInputs(),
                         TotalCost = TotalCost,
@@ -573,6 +605,25 @@ namespace AlenkaAssistant.ViewModels
                         if (success)
                         {
                             StatusMessage = "✓ Successfully saved to Google Sheets!";
+
+                            // Delete from local storage after successful Google submission
+                            Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    var localDataService = new LocalDataService();
+                                    var lastSavedRequest = await localDataService.LoadLastPurchaseRequestAsync();
+
+                                    if (lastSavedRequest != null)
+                                    {
+                                        await localDataService.DeletePurchaseRequestAsync(lastSavedRequest.Id);
+                                    }
+                                }
+                                catch { }
+                            });
+
+                            // Clear form after successful submission
+                            ClearForm();
                         }
                         else
                         {
@@ -611,8 +662,8 @@ namespace AlenkaAssistant.ViewModels
                     var purchaseRequest = new PurchaseRequestModel
                     {
                         UserId = Uid,
-                        GeneralTreatmentDesc = TreatmentDescription,
-                        TreatmentType = SelectedTreatmentType ?? TreatmentType.Other,
+                        GeneralTreatmentDesc = "",
+                        TreatmentType = TreatmentType.Other,
                         DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
                         CreatedAt = GetDateTimeFromInputs(),
                         TotalCost = TotalCost,
@@ -636,7 +687,10 @@ namespace AlenkaAssistant.ViewModels
                         purchaseRequest.CostDetails.Add(new CostModel 
                         { 
                             TreatmentDesc = cost.TreatmentDesc, 
-                            Cost = cost.Cost 
+                            Cost = cost.Cost,
+                            TreatmentType = cost.TreatmentType,
+                            RM = cost.RM,
+                            Month = cost.Month
                         });
                     }
 
@@ -649,8 +703,7 @@ namespace AlenkaAssistant.ViewModels
                         if (success)
                         {
                             StatusMessage = "✓ Successfully saved locally!";
-                            // Optionally clear the form after save
-                            ClearForm();
+                            // Do NOT clear form after local save - user wants to keep editing
                         }
                         else
                         {

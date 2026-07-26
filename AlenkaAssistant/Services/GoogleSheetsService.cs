@@ -27,6 +27,7 @@ namespace AlenkaAssistant.Services
             public string SpreadsheetId { get; set; }
             public string SheetName { get; set; }
             public bool Enabled { get; set; }
+            public int? AppendColumn { get; set; }
             /// <summary>
             /// Column mapping. Set to null or 0 to exclude a column from being sent to Google Sheets.
             /// For example: { "assistantNames": null } or { "assistantNames": 0 } will not send assistant names.
@@ -133,14 +134,19 @@ namespace AlenkaAssistant.Services
             if (altAssistantNames == null || altAssistantNames.Count == 0)
                 return "";
 
-            return string.Join("/", altAssistantNames);
+            return string.Join(", ", altAssistantNames);
         }
 
         /// <summary>
         /// Get doctor name display
         /// </summary>
-        private string GetDoctorDisplay(DoctorName? doctor)
+        private string GetDoctorDisplay(DoctorName? doctor, string? altDoctorName)
         {
+            if (doctor == DoctorName.Other && !string.IsNullOrWhiteSpace(altDoctorName))
+            {
+                return altDoctorName;
+            }
+
             if (!doctor.HasValue)
                 return "";
 
@@ -164,9 +170,10 @@ namespace AlenkaAssistant.Services
                 string month = GetIndonesianMonth(dateTime.Month);
                 string date = dateTime.Day.ToString();
                 string totalCost = request.TotalCost.ToString();
-                string treatmentType = GetTreatmentTypeDisplay(request.TreatmentType);
+                // Main treatment type is no longer used - treatment type is now per detail row
+                string treatmentType = "";
                 string assistantNames = GetAssistantNames(request.AltAssistantName);
-                string doctorName = GetDoctorDisplay(request.DoctorName);
+                string doctorName = GetDoctorDisplay(request.DoctorName, request.AltDoctorName);
 
                 // Get column positions from config
                 var colMap = _config.ColumnMapping;
@@ -179,16 +186,21 @@ namespace AlenkaAssistant.Services
                     for (int i = 0; i < request.CostDetails.Count; i++)
                     {
                         var costItem = request.CostDetails[i];
+                        string detailTreatmentType = costItem.TreatmentType.HasValue 
+                            ? TreatmentTypeHelper.GetDisplayName(costItem.TreatmentType.Value)
+                            : "";
                         var row = BuildRowWithColumnMapping(
                             colMap,
                             i == 0 ? year : "",
-                            i == 0 ? month : "",
+                            costItem.Month ?? month,
                             i == 0 ? date : "",
                             i == 0 ? totalCost : "",
                             costItem.Cost.ToString(),
+                            costItem.Discount.ToString(),
                             i == 0 ? request.UserId : "",
+                            costItem.RM ?? request.UserId,
                             costItem.TreatmentDesc ?? "",
-                            i == 0 ? treatmentType : "",
+                            detailTreatmentType,
                             i == 0 ? assistantNames : "",
                             i == 0 ? doctorName : ""
                         );
@@ -205,9 +217,11 @@ namespace AlenkaAssistant.Services
                         date,
                         totalCost,
                         "",
+                        "",
                         request.UserId,
+                        "",
                         request.GeneralTreatmentDesc ?? "",
-                        treatmentType,
+                        "",
                         assistantNames,
                         doctorName
                     );
@@ -218,6 +232,7 @@ namespace AlenkaAssistant.Services
                 var payload = new
                 {
                     sheetName = _config.SheetName,
+                    appendColumn = _config.AppendColumn,
                     values = rows
                 };
 
@@ -276,7 +291,9 @@ namespace AlenkaAssistant.Services
             string date,
             string totalCost,
             string costDetail,
-            string userId,
+            string discount,
+            string rm,
+            string rmDetail,
             string treatmentDescription,
             string treatmentType,
             string assistantNames,
@@ -316,7 +333,9 @@ namespace AlenkaAssistant.Services
             SetColumn("date", date);
             SetColumn("totalCost", totalCost);
             SetColumn("costDetail", costDetail);
-            SetColumn("userId", userId);
+            SetColumn("discount", discount);
+            SetColumn("rm", rm);
+            SetColumn("rmDetail", rmDetail);
             SetColumn("treatmentDescription", treatmentDescription);
             SetColumn("treatmentType", treatmentType);
             SetColumn("assistantNames", assistantNames);

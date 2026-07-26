@@ -9,6 +9,10 @@ namespace AlenkaAssistant.Models
     {
         private string? _treatmentDesc;
         private int _cost;
+        private TreatmentType? _treatmentType;
+        private string? _rm;
+        private string? _month;
+        private int _discount;
 
         public string? TreatmentDesc
         {
@@ -32,6 +36,70 @@ namespace AlenkaAssistant.Models
                 {
                     _cost = value;
                     OnPropertyChanged(nameof(Cost));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Treatment type for this detail row
+        /// </summary>
+        public TreatmentType? TreatmentType
+        {
+            get => _treatmentType;
+            set
+            {
+                if (_treatmentType != value)
+                {
+                    _treatmentType = value;
+                    OnPropertyChanged(nameof(TreatmentType));
+                }
+            }
+        }
+
+        /// <summary>
+        /// RM number (copied from main patient record)
+        /// </summary>
+        public string? RM
+        {
+            get => _rm;
+            set
+            {
+                if (_rm != value)
+                {
+                    _rm = value;
+                    OnPropertyChanged(nameof(RM));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Month (extracted from the treatment date)
+        /// </summary>
+        public string? Month
+        {
+            get => _month;
+            set
+            {
+                if (_month != value)
+                {
+                    _month = value;
+                    OnPropertyChanged(nameof(Month));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Discount amount for this detail row
+        /// </summary>
+        public int Discount
+        {
+            get => _discount;
+            set
+            {
+                if (_discount != value)
+                {
+                    _discount = value;
+                    OnPropertyChanged(nameof(Discount));
                 }
             }
         }

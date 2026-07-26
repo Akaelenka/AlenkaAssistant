@@ -48,41 +48,6 @@
                          BorderBrush="#CCCCCC"/>
             </StackPanel>
 
-            <!-- General Treatment Description TextBox -->
-            <StackPanel Margin="0,0,0,20">
-                <TextBlock Text="Tindakan" 
-                           FontSize="14" 
-                           FontWeight="SemiBold" 
-                           Margin="0,0,0,8"
-                           Foreground="#555555"/>
-                <TextBox Text="{Binding TreatmentDescription, UpdateSourceTrigger=PropertyChanged}" 
-                         Height="80" 
-                         Padding="12,10" 
-                         FontSize="12"
-                         Background="White"
-                         BorderThickness="1"
-                         BorderBrush="#CCCCCC"
-                         TextWrapping="Wrap"
-                         VerticalScrollBarVisibility="Auto"/>
-            </StackPanel>
-
-            <!-- Treatment Type ComboBox -->
-            <StackPanel Margin="0,0,0,20">
-                <TextBlock Text="Tipe Tindakan" 
-                           FontSize="14" 
-                           FontWeight="SemiBold" 
-                           Margin="0,0,0,8"
-                           Foreground="#555555"/>
-                <ComboBox ItemsSource="{Binding TreatmentTypes}" 
-                          SelectedItem="{Binding SelectedTreatmentType, Converter={StaticResource TreatmentTypeConverter}}" 
-                          Height="40" 
-                          Padding="12,10" 
-                          FontSize="12"
-                          Background="White"
-                          BorderThickness="1"
-						  BorderBrush="#CCCCCC"/>
-			</StackPanel>
-
 			<!-- Assistant List Section -->
 			<StackPanel Margin="0,0,0,20">
 				<StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -231,14 +196,49 @@
                             Cursor="Hand"/>
                 </StackPanel>
 
+                <!-- Column Headers for Cost List -->
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,5">
+                    <TextBlock Text="Tindakan" 
+                               FontSize="11" 
+                               FontWeight="SemiBold"
+                               Foreground="#555555"
+                               Width="220"
+                               Margin="0,0,0,0"/>
+                    <TextBlock Text="Tipe" 
+                               FontSize="11" 
+                               FontWeight="SemiBold"
+                               Foreground="#555555"
+                               Width="120"
+                               Margin="10,0,0,0"/>
+                    <TextBlock Text="Biaya" 
+                               FontSize="11" 
+                               FontWeight="SemiBold"
+                               Foreground="#555555"
+                               Width="100"
+                               Margin="10,0,0,0"/>
+                    <TextBlock Text="Diskon" 
+                               FontSize="11" 
+                               FontWeight="SemiBold"
+                               Foreground="#555555"
+                               Width="80"
+                               Margin="10,0,0,0"/>
+                    <TextBlock Text="" 
+                               FontSize="11" 
+                               FontWeight="SemiBold"
+                               Foreground="#555555"
+                               Width="70"
+                               Margin="10,0,0,0"/>
+                </StackPanel>
+
                 <!-- Items Control for Cost List -->
                 <ItemsControl ItemsSource="{Binding CostsList}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <!-- Treatment Description -->
                                 <TextBox Text="{Binding TreatmentDesc, UpdateSourceTrigger=PropertyChanged}" 
                                          Height="35" 
-                                         Width="300"
+                                         Width="220"
                                          Padding="10,8" 
                                          FontSize="12"
                                          Background="White"
@@ -246,6 +246,22 @@
                                          BorderBrush="#CCCCCC"
                                          Foreground="#555555"
                                          VerticalAlignment="Center"/>
+
+                                <!-- Treatment Type -->
+                                <ComboBox ItemsSource="{Binding DataContext.TreatmentTypes, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                          SelectedItem="{Binding TreatmentType, Converter={StaticResource TreatmentTypeConverter}, UpdateSourceTrigger=PropertyChanged}"
+                                          Height="35"
+                                          Width="120"
+                                          Padding="10,8"
+                                          FontSize="12"
+                                          Background="White"
+                                          BorderThickness="1"
+                                          BorderBrush="#CCCCCC"
+                                          Margin="10,0,0,0"
+                                          Foreground="#555555"
+                                          VerticalAlignment="Center"/>
+
+                                <!-- Cost -->
                                 <TextBox Text="{Binding Cost, UpdateSourceTrigger=PropertyChanged}" 
                                          Height="35" 
                                          Width="100"
@@ -257,6 +273,21 @@
                                          Margin="10,0,0,0"
                                          Foreground="#555555"
                                          VerticalAlignment="Center"/>
+
+                                <!-- Discount -->
+                                <TextBox Text="{Binding Discount, UpdateSourceTrigger=PropertyChanged}" 
+                                         Height="35" 
+                                         Width="80"
+                                         Padding="10,8" 
+                                         FontSize="12"
+                                         Background="White"
+                                         BorderThickness="1"
+                                         BorderBrush="#CCCCCC"
+                                         Margin="10,0,0,0"
+                                         Foreground="#555555"
+                                         VerticalAlignment="Center"/>
+
+                                <!-- Delete Button -->
                                 <Button Command="{Binding DataContext.RemoveCostCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
                                         CommandParameter="{Binding}" 
                                         Content="Hapus" 
@@ -302,20 +333,20 @@
 
         <!-- Fixed Button Bar at Bottom -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="30,15,30,15" HorizontalAlignment="Right" Background="#F5F5F5">
-            <Button Command="{Binding CancelCommand}" 
-                    Content="Batal" 
+            <Button Command="{Binding SaveToGoogleSheetsCommand}" 
+                    Content="Submit" 
                     Width="100" 
                     Height="40"
                     Margin="0,0,10,0"
-                    Background="#f44336"
+                    Background="#1976D2"
                     Foreground="White"
                     FontSize="12"
                     FontWeight="SemiBold"
                     Cursor="Hand"
-                    ToolTip="Cancel and clear form"/>
+                    ToolTip="Save data to Google Sheets"/>
             <Button Command="{Binding SaveLocalCommand}" 
-                    Content="Simpan Lokal" 
-                    Width="130" 
+                    Content="Simpan" 
+                    Width="100" 
                     Height="40" 
                     Margin="0,0,10,0"
                     Background="#4CAF50"
@@ -324,16 +355,16 @@
                     FontWeight="SemiBold"
                     Cursor="Hand"
                     ToolTip="Save data locally on this computer"/>
-            <Button Command="{Binding SaveToGoogleSheetsCommand}" 
-                    Content="Simpan ke Google Sheet" 
-                    Width="150" 
-                    Height="40" 
-                    Background="#1976D2"
+            <Button Command="{Binding CancelCommand}" 
+                    Content="Batal" 
+                    Width="100" 
+                    Height="40"
+                    Background="#f44336"
                     Foreground="White"
                     FontSize="12"
                     FontWeight="SemiBold"
                     Cursor="Hand"
-                    ToolTip="Save data to Google Sheets"/>
+                    ToolTip="Cancel and clear form"/>
         </StackPanel>
     </Grid>
 </UserControl>

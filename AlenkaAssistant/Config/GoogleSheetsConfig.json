@@ -3,17 +3,20 @@
   "spreadsheetId": "YOUR_SPREADSHEET_ID",
   "sheetName": "Sheet1",
   "enabled": false
+  "appendColumn": 1,
   "columnMapping": {
     "year": 0,
     "month": 2,
     "date": 3,
     "totalCost": 4,
     "costDetail": 5,
-    "userId": 6,
-    "treatmentDescription": 7,
-    "treatmentType": 8,
-    "assistantNames": 9,
-    "doctorName": 10
+    "discount": 6,
+    "rmDetail": 7,
+    "rm": 8,
+    "treatmentDescription": 15,
+    "treatmentType": 16,
+    "assistantNames": 17,
+    "doctorName": 18
   },
   "assistantNames": [
     "Pavela",
