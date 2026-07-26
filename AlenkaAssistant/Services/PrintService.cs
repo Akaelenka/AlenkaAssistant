@@ -419,7 +419,8 @@ namespace AlenkaAssistant.Services
         {
             var section = new Paragraph
             {
-                Margin = new Thickness(0, layout.SignatureTopMargin, 0, 0)
+                Margin = new Thickness(0, layout.SignatureTopMargin, 0, 0),
+                TextAlignment = TextAlignment.Right
             };
 
             section.Inlines.Add(new Run(GetIndonesianDateString(request.CreatedAt)));
