@@ -28,8 +28,7 @@ namespace AlenkaAssistant.Views
                 {
                     uidTextBox.LostFocus += (sender, eventArgs) =>
                     {
-                        System.Diagnostics.Debug.WriteLine("[View] Uid TextBox LostFocus triggered");
-                        // The lookup will be triggered automatically by the ViewModel's Uid property setter
+                        viewModel.LookupPatientByUid();
                     };
                 }
 
@@ -95,6 +94,7 @@ namespace AlenkaAssistant.Views
                     // Populate form with last saved data
                     viewModel.Uid = lastSavedRequest.UserId ?? "";
                     System.Diagnostics.Debug.WriteLine($"[LoadData] Set Uid to: '{viewModel.Uid}'");
+                    viewModel.LookupPatientByUid();
 
                     viewModel.SelectedTreatmentType = lastSavedRequest.TreatmentType;
 

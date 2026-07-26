@@ -20,6 +20,9 @@
     <None Update="Config\GoogleSheetsConfig.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Content Include="Images\AlenkaLogo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <Target Name="PreUnblockDlls" BeforeTargets="Build">

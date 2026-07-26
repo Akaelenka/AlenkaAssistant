@@ -98,19 +98,31 @@ namespace AlenkaAssistant.ViewModels
                     _uid = value;
                     OnPropertyChanged(nameof(Uid));
 
-                    // Trigger patient lookup when RM changes
-                    if (!string.IsNullOrWhiteSpace(value) && _patientLookupService != null)
+                    if (string.IsNullOrWhiteSpace(value))
                     {
-                        LookupPatientAsync(value).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        // Clear patient info if UID is empty
                         PatientName = "";
                         PatientLookupMessage = "";
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Lookup patient name for the current RM number. Call when the RM field loses focus.
+        /// </summary>
+        public void LookupPatientByUid()
+        {
+            if (_patientLookupService == null)
+                return;
+
+            if (string.IsNullOrWhiteSpace(Uid))
+            {
+                PatientName = "";
+                PatientLookupMessage = "";
+                return;
+            }
+
+            LookupPatientAsync(Uid).ConfigureAwait(false);
         }
 
         public TreatmentType? SelectedTreatmentType
@@ -894,7 +906,7 @@ namespace AlenkaAssistant.ViewModels
 
                 // Create and show the print preview window
                 // NOTE: This does NOT clear or modify any form data - it's preview only
-                var previewWindow = new global::AlenkaAssistant.Views.PrintPreviewWindow(doc, "Alenka Invoice - Print Preview");
+                var previewWindow = new global::AlenkaAssistant.Views.PrintPreviewWindow(doc, "Alenka Invoice - Print Preview", paperSize);
                 previewWindow.ShowDialog();
 
                 // After preview closes, form data remains unchanged
