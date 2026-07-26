@@ -357,10 +357,10 @@ namespace AlenkaAssistant.Services
                     }
 
                     string description = cost.TreatmentDesc ?? "";
-                    if (!string.IsNullOrWhiteSpace(cost.TreatmentType?.ToString()))
-                    {
-                        description += $" ({TreatmentTypeHelper.GetDisplayName(cost.TreatmentType.Value)})";
-                    }
+                    //if (!string.IsNullOrWhiteSpace(cost.TreatmentType?.ToString()))
+                    //{
+                    //    description += $" ({TreatmentTypeHelper.GetDisplayName(cost.TreatmentType.Value)})";
+                    //}
 
                     AddTableCell(dataRow, description, false, false, layout.TableCellPadding);
                     AddTableCell(dataRow, $"Rp {cost.Cost:N0}", false, true, layout.TableCellPadding);

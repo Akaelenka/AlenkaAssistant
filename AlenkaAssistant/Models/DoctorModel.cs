@@ -25,9 +25,9 @@ namespace AlenkaAssistant.Models
         {
             return doctorName switch
             {
-                DoctorName.DrgNovi => "Drg. Novi",
-                DoctorName.DrgFarasinta => "Drg. Farasinta",
-                DoctorName.DrgDiozola => "Drg. Diozola",
+                DoctorName.DrgNovi => "drg. Novi",
+                DoctorName.DrgFarasinta => "drg. Farasinta",
+                DoctorName.DrgDiozola => "drg. Diozola",
                 DoctorName.Other => "Lainnya",
                 _ => doctorName.ToString()
             };
