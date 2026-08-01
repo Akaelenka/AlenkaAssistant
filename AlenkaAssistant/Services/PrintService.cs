@@ -327,9 +327,10 @@ namespace AlenkaAssistant.Services
             };
 
             table.Columns.Add(new TableColumn { Width = new GridLength(2.5, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.0, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.0, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.5, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(0.8, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(0.6, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(0.8, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(1.2, GridUnitType.Star) });
 
             var headerGroup = new TableRowGroup();
             var headerRow = new TableRow
@@ -339,7 +340,8 @@ namespace AlenkaAssistant.Services
 
             AddTableCell(headerRow, "Keterangan", true, false, layout.TableCellPadding);
             AddTableCell(headerRow, "Harga", true, true, layout.TableCellPadding);
-            AddTableCell(headerRow, "Sebanyak", true, true, layout.TableCellPadding);
+            AddTableCell(headerRow, "Qty", true, true, layout.TableCellPadding);
+            AddTableCell(headerRow, "Diskon", true, true, layout.TableCellPadding);
             AddTableCell(headerRow, "Jumlah", true, true, layout.TableCellPadding);
 
             headerGroup.Rows.Add(headerRow);
@@ -364,9 +366,11 @@ namespace AlenkaAssistant.Services
 
                     AddTableCell(dataRow, description, false, false, layout.TableCellPadding);
                     AddTableCell(dataRow, $"Rp {cost.Cost:N0}", false, true, layout.TableCellPadding);
+                    AddTableCell(dataRow, cost.ItemCount.ToString(), false, true, layout.TableCellPadding);
                     AddTableCell(dataRow, $"Rp {cost.Discount:N0}", false, true, layout.TableCellPadding);
 
-                    decimal jumlah = cost.Cost - cost.Discount;
+                    // Calculate total: (Cost × ItemCount) - Discount
+                    decimal jumlah = (cost.Cost * cost.ItemCount) - cost.Discount;
                     AddTableCell(dataRow, $"Rp {jumlah:N0}", false, true, layout.TableCellPadding);
 
                     bodyGroup.Rows.Add(dataRow);
@@ -386,6 +390,7 @@ namespace AlenkaAssistant.Services
                 AddTableCell(emptyRow, "Rp", false, true, layout.TableCellPadding);
                 AddTableCell(emptyRow, "", false, true, layout.TableCellPadding);
                 AddTableCell(emptyRow, "Rp", false, true, layout.TableCellPadding);
+                AddTableCell(emptyRow, "Rp", false, true, layout.TableCellPadding);
 
                 bodyGroup.Rows.Add(emptyRow);
             }
@@ -398,7 +403,7 @@ namespace AlenkaAssistant.Services
                 Background = new SolidColorBrush(Color.FromRgb(170, 120, 80))
             };
 
-            AddTableCell(totalRow, "Jumlah Total", true, false, layout.TableCellPadding, 3);
+            AddTableCell(totalRow, "Jumlah Total", true, false, layout.TableCellPadding, 4);
             AddTableCell(totalRow, $"Rp {request.TotalCost:N0}", true, true, layout.TableCellPadding);
 
             totalGroup.Rows.Add(totalRow);
@@ -473,17 +478,12 @@ namespace AlenkaAssistant.Services
 
         private string GetDoctorDisplay(PurchaseRequestModel request)
         {
-            if (request.DoctorName == DoctorName.Other && !string.IsNullOrWhiteSpace(request.AltDoctorName))
-            {
-                return request.AltDoctorName;
-            }
-
-            if (!request.DoctorName.HasValue)
+            if (string.IsNullOrWhiteSpace(request.DoctorName))
             {
                 return "-";
             }
 
-            return DoctorNameHelper.GetDisplayName(request.DoctorName.Value);
+            return request.DoctorName;
         }
 
         private string GetIndonesianDateString(DateTime dateTime)

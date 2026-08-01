@@ -142,7 +142,6 @@ namespace AlenkaAssistant.ViewModels
         public ObservableCollection<string> AssistantNamesForList { get; private set; }
         public ObservableCollection<string> DoctorNames { get; private set; }
         public ObservableCollection<CostModel> CostsList { get; }
-        public ObservableCollection<AssistantModel> AssistantsList { get; }
 
         private string _selectedAssistantName;
         public string SelectedAssistantName
@@ -251,7 +250,8 @@ namespace AlenkaAssistant.ViewModels
                 int total = 0;
                 foreach (var item in CostsList)
                 {
-                    total += item.Cost - item.Discount;
+                    // (Cost × ItemCount) - Discount
+                    total += (item.Cost * item.ItemCount) - item.Discount;
                 }
                 return total;
             }
@@ -275,17 +275,11 @@ namespace AlenkaAssistant.ViewModels
             // Initialize costs list with one default item
             CostsList = new ObservableCollection<CostModel>
             {
-                new CostModel { TreatmentDesc = string.Empty, Cost = 0 }
+                new CostModel { TreatmentDesc = string.Empty, Cost = 0, ItemCount = 1 }
             };
-
-            // Initialize assistants list (empty, user must add)
-            AssistantsList = new ObservableCollection<AssistantModel>();
 
             // Subscribe to collection changes to manage cost item event subscriptions
             CostsList.CollectionChanged += CostsList_CollectionChanged;
-
-            // Subscribe to assistants list collection changes
-            AssistantsList.CollectionChanged += AssistantsList_CollectionChanged;
 
             // Subscribe to initial cost items
             foreach (var item in CostsList)
@@ -481,21 +475,11 @@ namespace AlenkaAssistant.ViewModels
                 {
                     UserId = NoRmFormatter.FormatRmForOutput(Uid), // Format RM as A.xxxx
                     GeneralTreatmentDesc = "",
-                    AssistantName = AssistantName.None,
-                    DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
+                    AssistantNames = new List<string> { SelectedAssistantName },
+                    DoctorName = SelectedDoctorName,
                     CreatedAt = GetDateTimeFromInputs(),
-                    AltAssistantName = new List<string>(),
                     CostDetails = CostsList.ToList()
                 };
-
-                // Add assistant names to AltAssistantName list
-                foreach (var assistant in AssistantsList)
-                {
-                    string assistantName = assistant.SelectedAssistantName == "Other" 
-                        ? (assistant.CustomAssistantName ?? "")
-                        : assistant.SelectedAssistantName;
-                    purchaseRequest.AltAssistantName.Add(assistantName);
-                }
 
                 // TODO: Save to database or API
                 StatusMessage = $"✓ Purchase request submitted successfully for RM: {purchaseRequest.UserId}";
@@ -566,37 +550,17 @@ namespace AlenkaAssistant.ViewModels
             };
         }
 
-        private DoctorName ConvertDoctorNameStringToEnum(string doctorNameString)
-        {
-            if (string.IsNullOrWhiteSpace(doctorNameString))
-                return DoctorName.Other;
-
-            // Try to find a matching doctor by display name
-            foreach (DoctorName enumVal in System.Enum.GetValues(typeof(DoctorName)))
-            {
-                if (DoctorNameHelper.GetDisplayName(enumVal) == doctorNameString || 
-                    DoctorNameHelper.GetDisplayName(enumVal).Equals(doctorNameString, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    return enumVal;
-                }
-            }
-
-            return DoctorName.Other;
-        }
-
         private void ClearForm()
         {
             Uid = string.Empty;
             SelectedDoctorName = DoctorNames?.Count > 0 ? DoctorNames[0] : "Other";
+            SelectedAssistantName = AssistantNamesForList?.Count > 0 ? AssistantNamesForList[0] : "";
             SelectedDate = DateTime.Today;
             SelectedTime = DateTime.Now.ToString("HH:mm");
 
-            // Clear assistants list
-            AssistantsList.Clear();
-
             // Reset costs list
             CostsList.Clear();
-            CostsList.Add(new CostModel { TreatmentDesc = string.Empty, Cost = 0 });
+            CostsList.Add(new CostModel { TreatmentDesc = string.Empty, Cost = 0, ItemCount = 1 });
         }
 
         private void AddCost()
@@ -605,6 +569,7 @@ namespace AlenkaAssistant.ViewModels
             { 
                 TreatmentDesc = string.Empty, 
                 Cost = 0,
+                ItemCount = 1,
                 TreatmentType = null,
                 RM = Uid,
                 Month = GetIndonesianMonth(SelectedDate?.Month ?? DateTime.Now.Month)
@@ -663,43 +628,18 @@ namespace AlenkaAssistant.ViewModels
 
         private void AddAssistant()
         {
-            var defaultAssistant = AssistantNamesForList?.Count > 0 ? AssistantNamesForList[0] : "Other";
-            AssistantsList.Add(new AssistantModel { SelectedAssistantName = defaultAssistant, CustomAssistantName = string.Empty });
+            // Assistant selection is now handled directly through UI binding to AssistantNamesForList
+            // This method is kept for backward compatibility but no longer needed
         }
 
         private void RemoveAssistant(object parameter)
         {
-            if (parameter is AssistantModel assistantItem)
-            {
-                assistantItem.PropertyChanged -= AssistantItem_PropertyChanged;
-                AssistantsList.Remove(assistantItem);
-            }
-        }
-
-        private void AssistantsList_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
-        {
-            // Unsubscribe from removed items
-            if (e.OldItems != null)
-            {
-                foreach (AssistantModel item in e.OldItems)
-                {
-                    item.PropertyChanged -= AssistantItem_PropertyChanged;
-                }
-            }
-
-            // Subscribe to added items
-            if (e.NewItems != null)
-            {
-                foreach (AssistantModel item in e.NewItems)
-                {
-                    item.PropertyChanged += AssistantItem_PropertyChanged;
-                }
-            }
+            // Assistant removal is no longer supported - use UI dropdown only
         }
 
         private void AssistantItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            // Handle assistant item property changes if needed
+            // No longer used
         }
 
         private bool CanSaveToGoogleSheets()
@@ -738,22 +678,14 @@ namespace AlenkaAssistant.ViewModels
                         UserId = NoRmFormatter.FormatRmForOutput(Uid), // Format RM as A.xxxx
                         GeneralTreatmentDesc = "",
                         TreatmentType = TreatmentType.Lainnya,
-                        DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
+                        DoctorName = SelectedDoctorName,
+                        AssistantNames = string.IsNullOrWhiteSpace(SelectedAssistantName) 
+                            ? new List<string>() 
+                            : new List<string> { SelectedAssistantName },
                         CreatedAt = GetDateTimeFromInputs(),
                         TotalCost = TotalCost,
-                        AltAssistantName = new List<string>(),
-                        CostDetails = CostsList.ToList(),
-                        AltDoctorName = SelectedDoctorName == "Other" ? CustomDoctorName : null
+                        CostDetails = CostsList.ToList()
                     };
-
-                    // Add assistant names to AltAssistantName list
-                    foreach (var assistant in AssistantsList)
-                    {
-                        string assistantName = assistant.SelectedAssistantName == "Other" 
-                            ? (assistant.CustomAssistantName ?? "")
-                            : assistant.SelectedAssistantName;
-                        purchaseRequest.AltAssistantName.Add(assistantName);
-                    }
 
                     // Append to Google Sheet
                     bool success = await googleSheetsService.AppendPurchaseRequestAsync(purchaseRequest);
@@ -823,25 +755,17 @@ namespace AlenkaAssistant.ViewModels
                         UserId = NoRmFormatter.FormatRmForOutput(Uid), // Format RM as A.xxxx
                         GeneralTreatmentDesc = "",
                         TreatmentType = TreatmentType.Lainnya,
-                        DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
+                        DoctorName = SelectedDoctorName,
+                        AssistantNames = string.IsNullOrWhiteSpace(SelectedAssistantName)
+                            ? new List<string>()
+                            : new List<string> { SelectedAssistantName },
                         CreatedAt = GetDateTimeFromInputs(),
                         TotalCost = TotalCost,
-                        AltAssistantName = new List<string>(),
-                        CostDetails = new List<CostModel>(),
-                        AltDoctorName = SelectedDoctorName == "Other" ? CustomDoctorName : null
+                        CostDetails = new List<CostModel>()
                     };
 
                     System.Diagnostics.Debug.WriteLine($"[SaveData] Original Uid: '{Uid}'");
                     System.Diagnostics.Debug.WriteLine($"[SaveData] Formatted UserId: '{purchaseRequest.UserId}'");
-
-                    // Add assistant names to AltAssistantName list
-                    foreach (var assistant in AssistantsList)
-                    {
-                        string assistantName = assistant.SelectedAssistantName == "Other" 
-                            ? (assistant.CustomAssistantName ?? "")
-                            : assistant.SelectedAssistantName;
-                        purchaseRequest.AltAssistantName.Add(assistantName);
-                    }
 
                     // Add costs to CostDetails
                     foreach (var cost in CostsList)
@@ -850,9 +774,11 @@ namespace AlenkaAssistant.ViewModels
                         { 
                             TreatmentDesc = cost.TreatmentDesc, 
                             Cost = cost.Cost,
+                            ItemCount = cost.ItemCount,
                             TreatmentType = cost.TreatmentType,
                             RM = cost.RM,
-                            Month = cost.Month
+                            Month = cost.Month,
+                            Discount = cost.Discount
                         });
                     }
 
@@ -925,22 +851,14 @@ namespace AlenkaAssistant.ViewModels
                 UserId = NoRmFormatter.FormatRmForOutput(Uid),
                 GeneralTreatmentDesc = "",
                 TreatmentType = TreatmentType.Lainnya,
-                DoctorName = ConvertDoctorNameStringToEnum(SelectedDoctorName),
+                DoctorName = SelectedDoctorName,
+                AssistantNames = string.IsNullOrWhiteSpace(SelectedAssistantName)
+                    ? new List<string>()
+                    : new List<string> { SelectedAssistantName },
                 CreatedAt = GetDateTimeFromInputs(),
                 TotalCost = TotalCost,
-                AltAssistantName = new List<string>(),
-                CostDetails = new List<CostModel>(),
-                AltDoctorName = SelectedDoctorName == "Other" ? CustomDoctorName : null
+                CostDetails = new List<CostModel>()
             };
-
-            // Add assistant names
-            foreach (var assistant in AssistantsList)
-            {
-                string assistantName = assistant.SelectedAssistantName == "Other" 
-                    ? (assistant.CustomAssistantName ?? "")
-                    : assistant.SelectedAssistantName;
-                model.AltAssistantName.Add(assistantName);
-            }
 
             // Add costs
             foreach (var cost in CostsList)
@@ -949,6 +867,7 @@ namespace AlenkaAssistant.ViewModels
                 { 
                     TreatmentDesc = cost.TreatmentDesc, 
                     Cost = cost.Cost,
+                    ItemCount = cost.ItemCount,
                     TreatmentType = cost.TreatmentType,
                     Discount = cost.Discount,
                     RM = cost.RM,

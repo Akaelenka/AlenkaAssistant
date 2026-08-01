@@ -129,28 +129,20 @@ namespace AlenkaAssistant.Services
         /// <summary>
         /// Get assistant names as comma-separated string
         /// </summary>
-        private string GetAssistantNames(List<string> altAssistantNames)
+        private string GetAssistantNames(List<string>? assistantNames)
         {
-            if (altAssistantNames == null || altAssistantNames.Count == 0)
+            if (assistantNames == null || assistantNames.Count == 0)
                 return "";
 
-            return string.Join(", ", altAssistantNames);
+            return string.Join(", ", assistantNames);
         }
 
         /// <summary>
         /// Get doctor name display
         /// </summary>
-        private string GetDoctorDisplay(DoctorName? doctor, string? altDoctorName)
+        private string GetDoctorDisplay(string? doctorName)
         {
-            if (doctor == DoctorName.Other && !string.IsNullOrWhiteSpace(altDoctorName))
-            {
-                return altDoctorName;
-            }
-
-            if (!doctor.HasValue)
-                return "";
-
-            return DoctorNameHelper.GetDisplayName(doctor.Value);
+            return doctorName ?? "";
         }
 
         /// <summary>
@@ -172,8 +164,8 @@ namespace AlenkaAssistant.Services
                 string totalCost = request.TotalCost.ToString();
                 // Main treatment type is no longer used - treatment type is now per detail row
                 string treatmentType = "";
-                string assistantNames = GetAssistantNames(request.AltAssistantName);
-                string doctorName = GetDoctorDisplay(request.DoctorName, request.AltDoctorName);
+                string assistantNames = GetAssistantNames(request.AssistantNames);
+                string doctorName = GetDoctorDisplay(request.DoctorName);
 
                 // Get column positions from config
                 var colMap = _config.ColumnMapping;
@@ -189,6 +181,8 @@ namespace AlenkaAssistant.Services
                         string detailTreatmentType = costItem.TreatmentType.HasValue 
                             ? TreatmentTypeHelper.GetDisplayName(costItem.TreatmentType.Value)
                             : "";
+                        // Format RM with A.xxxx format
+                        string rmForSheet = NoRmFormatter.FormatRmForOutput(costItem.RM ?? request.UserId);
                         var row = BuildRowWithColumnMapping(
                             colMap,
                             i == 0 ? year : "",
@@ -198,7 +192,7 @@ namespace AlenkaAssistant.Services
                             costItem.Cost.ToString(),
                             costItem.Discount.ToString(),
                             i == 0 ? request.UserId : "",
-                            costItem.RM ?? request.UserId,
+                            rmForSheet,
                             costItem.TreatmentDesc ?? "",
                             detailTreatmentType,
                             i == 0 ? assistantNames : "",
@@ -210,6 +204,7 @@ namespace AlenkaAssistant.Services
                 else
                 {
                     // If no cost details, create one row with empty cost
+                    string rmForSheet = NoRmFormatter.FormatRmForOutput(request.UserId);
                     var row = BuildRowWithColumnMapping(
                         colMap,
                         year,
@@ -219,7 +214,7 @@ namespace AlenkaAssistant.Services
                         "",
                         "",
                         request.UserId,
-                        "",
+                        rmForSheet,
                         request.GeneralTreatmentDesc ?? "",
                         "",
                         assistantNames,

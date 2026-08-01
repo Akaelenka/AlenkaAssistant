@@ -12,6 +12,7 @@ namespace AlenkaAssistant.Models
         private TreatmentType? _treatmentType;
         private string? _rm;
         private string? _month;
+        private int _itemCount;
         private int _discount;
 
         public string? TreatmentDesc
@@ -36,6 +37,7 @@ namespace AlenkaAssistant.Models
                 {
                     _cost = value;
                     OnPropertyChanged(nameof(Cost));
+                    OnPropertyChanged(nameof(TotalAmount));
                 }
             }
         }
@@ -89,6 +91,23 @@ namespace AlenkaAssistant.Models
         }
 
         /// <summary>
+        /// Item count for this detail row
+        /// </summary>
+        public int ItemCount
+        {
+            get => _itemCount;
+            set
+            {
+                if (_itemCount != value)
+                {
+                    _itemCount = value;
+                    OnPropertyChanged(nameof(ItemCount));
+                    OnPropertyChanged(nameof(TotalAmount));
+                }
+            }
+        }
+
+        /// <summary>
         /// Discount amount for this detail row
         /// </summary>
         public int Discount
@@ -100,8 +119,17 @@ namespace AlenkaAssistant.Models
                 {
                     _discount = value;
                     OnPropertyChanged(nameof(Discount));
+                    OnPropertyChanged(nameof(TotalAmount));
                 }
             }
+        }
+
+        /// <summary>
+        /// Calculated total: (Cost × ItemCount) - Discount
+        /// </summary>
+        public int TotalAmount
+        {
+            get => (Cost * ItemCount) - Discount;
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -120,10 +148,8 @@ namespace AlenkaAssistant.Models
         public string? GeneralTreatmentDesc { get; set; }
         public TreatmentType TreatmentType { get; set; }
         public int TotalCost { get; set; }
-        public AssistantName? AssistantName { get; set; }
-        public List<string>? AltAssistantName { get; set; }
-        public DoctorName? DoctorName { get; set; }
-        public string? AltDoctorName { get; set; }
+        public List<string>? AssistantNames { get; set; }
+        public string? DoctorName { get; set; }
         public List<CostModel>? CostDetails { get; set; }
     }
 }

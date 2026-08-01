@@ -98,61 +98,51 @@ namespace AlenkaAssistant.Views
 
                     viewModel.SelectedTreatmentType = lastSavedRequest.TreatmentType;
 
-                    // Fix: Properly load doctor name - ensure it's in the dropdown or set to Other
-                    if (lastSavedRequest.DoctorName.HasValue)
+                    // Load doctor name - now string-based from config
+                    if (!string.IsNullOrWhiteSpace(lastSavedRequest.DoctorName))
                     {
-                        string displayName = DoctorNameHelper.GetDisplayName(lastSavedRequest.DoctorName.Value);
-
-                        // Check if the display name is in the available doctor names
-                        if (viewModel.DoctorNames != null && viewModel.DoctorNames.Contains(displayName))
+                        // Check if the doctor name is in the available list
+                        if (viewModel.DoctorNames != null && viewModel.DoctorNames.Contains(lastSavedRequest.DoctorName))
                         {
-                            viewModel.SelectedDoctorName = displayName;
-                            viewModel.CustomDoctorName = "";
+                            viewModel.SelectedDoctorName = lastSavedRequest.DoctorName;
                         }
-                        else if (lastSavedRequest.DoctorName == DoctorName.Other && !string.IsNullOrWhiteSpace(lastSavedRequest.AltDoctorName))
+                        else if (viewModel.DoctorNames != null && viewModel.DoctorNames.Count > 0)
                         {
-                            // Use the custom doctor name if it was saved as Other
-                            viewModel.SelectedDoctorName = "Other";
-                            viewModel.CustomDoctorName = lastSavedRequest.AltDoctorName;
-                        }
-                        else
-                        {
-                            // Fallback: try the first doctor in the list
-                            if (viewModel.DoctorNames != null && viewModel.DoctorNames.Count > 0)
-                            {
-                                viewModel.SelectedDoctorName = viewModel.DoctorNames[0];
-                                viewModel.CustomDoctorName = "";
-                            }
+                            // Fallback to first in list
+                            viewModel.SelectedDoctorName = viewModel.DoctorNames[0];
                         }
                     }
                     else
                     {
-                        viewModel.SelectedDoctorName = "Other";
-                        viewModel.CustomDoctorName = "";
+                        if (viewModel.DoctorNames != null && viewModel.DoctorNames.Count > 0)
+                        {
+                            viewModel.SelectedDoctorName = viewModel.DoctorNames[0];
+                        }
+                    }
+
+                    // Load assistant name - now string-based from config
+                    if (lastSavedRequest.AssistantNames != null && lastSavedRequest.AssistantNames.Count > 0)
+                    {
+                        string assistantName = lastSavedRequest.AssistantNames[0];
+                        if (viewModel.AssistantNamesForList != null && viewModel.AssistantNamesForList.Contains(assistantName))
+                        {
+                            viewModel.SelectedAssistantName = assistantName;
+                        }
+                        else if (viewModel.AssistantNamesForList != null && viewModel.AssistantNamesForList.Count > 0)
+                        {
+                            viewModel.SelectedAssistantName = viewModel.AssistantNamesForList[0];
+                        }
+                    }
+                    else
+                    {
+                        if (viewModel.AssistantNamesForList != null && viewModel.AssistantNamesForList.Count > 0)
+                        {
+                            viewModel.SelectedAssistantName = viewModel.AssistantNamesForList[0];
+                        }
                     }
 
                     viewModel.SelectedDate = lastSavedRequest.CreatedAt.Date;
                     viewModel.SelectedTime = lastSavedRequest.CreatedAt.ToString("HH:mm");
-
-                    // Populate assistants list
-                    if (lastSavedRequest.AltAssistantName != null)
-                    {
-                        viewModel.AssistantsList.Clear();
-                        foreach (var assistantName in lastSavedRequest.AltAssistantName)
-                        {
-                            // Check if this name is in the available dropdown list
-                            bool isInList = viewModel.AssistantNamesForList != null && viewModel.AssistantNamesForList.Contains(assistantName);
-
-                            var assistantModel = new AssistantModel
-                            {
-                                // If name is in the dropdown list, use it directly; otherwise mark as "Other"
-                                SelectedAssistantName = isInList ? assistantName : "Other",
-                                // If not in list, store the custom name; otherwise null
-                                CustomAssistantName = isInList ? null : assistantName
-                            };
-                            viewModel.AssistantsList.Add(assistantModel);
-                        }
-                    }
 
                     // Populate costs list
                     if (lastSavedRequest.CostDetails != null && lastSavedRequest.CostDetails.Count > 0)
@@ -160,25 +150,14 @@ namespace AlenkaAssistant.Views
                         viewModel.CostsList.Clear();
                         foreach (var cost in lastSavedRequest.CostDetails)
                         {
-                            viewModel.CostsList.Add(new CostModel 
-                            { 
-                                TreatmentDesc = cost.TreatmentDesc, 
-                                Cost = cost.Cost,
-                                TreatmentType = cost.TreatmentType,
-                                RM = cost.RM,
-                                Month = cost.Month,
-                                Discount = cost.Discount
-                            });
+                            viewModel.CostsList.Add(cost);
                         }
                     }
-
-                    viewModel.StatusMessage = "✓ Last saved data loaded.";
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error loading last saved data: {ex.Message}");
-                // Don't show error to user, just proceed with empty form
+                System.Diagnostics.Debug.WriteLine($"[LoadData] Error loading last saved data: {ex.Message}");
             }
         }
 
