@@ -140,6 +140,87 @@ namespace AlenkaAssistant.Models
         }
     }
 
+    public class AssistantItem : INotifyPropertyChanged
+    {
+        private string? _selectedAssistantName;
+        private string? _customAssistantName;
+        private bool _showCustomInput;
+
+        /// <summary>
+        /// Selected assistant name from the dropdown
+        /// </summary>
+        public string? SelectedAssistantName
+        {
+            get => _selectedAssistantName;
+            set
+            {
+                if (_selectedAssistantName != value)
+                {
+                    _selectedAssistantName = value;
+                    OnPropertyChanged(nameof(SelectedAssistantName));
+
+                    // Show custom input if "Other" is selected
+                    ShowCustomInput = value == "Other";
+                    if (value != "Other")
+                    {
+                        CustomAssistantName = string.Empty;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Custom name if "Other" is selected
+        /// </summary>
+        public string? CustomAssistantName
+        {
+            get => _customAssistantName;
+            set
+            {
+                if (_customAssistantName != value)
+                {
+                    _customAssistantName = value;
+                    OnPropertyChanged(nameof(CustomAssistantName));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Whether to show the custom input textbox
+        /// </summary>
+        public bool ShowCustomInput
+        {
+            get => _showCustomInput;
+            set
+            {
+                if (_showCustomInput != value)
+                {
+                    _showCustomInput = value;
+                    OnPropertyChanged(nameof(ShowCustomInput));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Get the final assistant name (either selected or custom)
+        /// </summary>
+        public string? GetFinalName()
+        {
+            if (SelectedAssistantName == "Other" && !string.IsNullOrWhiteSpace(CustomAssistantName))
+            {
+                return CustomAssistantName;
+            }
+            return SelectedAssistantName;
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        protected void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
     public class PurchaseRequestModel
     {
         public int Id { get; set; }

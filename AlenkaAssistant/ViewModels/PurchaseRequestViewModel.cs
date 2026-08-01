@@ -142,6 +142,7 @@ namespace AlenkaAssistant.ViewModels
         public ObservableCollection<string> AssistantNamesForList { get; private set; }
         public ObservableCollection<string> DoctorNames { get; private set; }
         public ObservableCollection<CostModel> CostsList { get; }
+        public ObservableCollection<AssistantItem> AssistantsList { get; }
 
         private string _selectedAssistantName;
         public string SelectedAssistantName
@@ -286,6 +287,9 @@ namespace AlenkaAssistant.ViewModels
             {
                 item.PropertyChanged += CostItem_PropertyChanged;
             }
+
+            // Initialize assistants list
+            AssistantsList = new ObservableCollection<AssistantItem>();
 
             // Load dropdown configuration and initialize patient lookup service
             LoadDropdownConfigAsync();
@@ -628,13 +632,22 @@ namespace AlenkaAssistant.ViewModels
 
         private void AddAssistant()
         {
-            // Assistant selection is now handled directly through UI binding to AssistantNamesForList
-            // This method is kept for backward compatibility but no longer needed
+            // Create a new AssistantItem and add it to the list
+            var newAssistant = new AssistantItem
+            {
+                SelectedAssistantName = AssistantNamesForList?.Count > 0 ? AssistantNamesForList[0] : null,
+                ShowCustomInput = false
+            };
+            AssistantsList.Add(newAssistant);
         }
 
         private void RemoveAssistant(object parameter)
         {
-            // Assistant removal is no longer supported - use UI dropdown only
+            // Remove the specified assistant item from the list
+            if (parameter is AssistantItem assistantItem)
+            {
+                AssistantsList.Remove(assistantItem);
+            }
         }
 
         private void AssistantItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -645,7 +658,18 @@ namespace AlenkaAssistant.ViewModels
         private bool CanSaveToGoogleSheets()
         {
             // Can save if basic fields are filled
-            return !string.IsNullOrWhiteSpace(Uid) && SelectedDate.HasValue;
+            if (!(!string.IsNullOrWhiteSpace(Uid) && SelectedDate.HasValue))
+            {
+                return false;
+            }
+
+            // Check if custom doctor name is required and provided
+            if (SelectedDoctorName == "Other" && string.IsNullOrWhiteSpace(CustomDoctorName))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void SaveToGoogleSheetsAsync()
@@ -736,7 +760,18 @@ namespace AlenkaAssistant.ViewModels
         private bool CanSaveLocal()
         {
             // Can save if basic fields are filled
-            return !string.IsNullOrWhiteSpace(Uid) && SelectedDate.HasValue;
+            if (!(!string.IsNullOrWhiteSpace(Uid) && SelectedDate.HasValue))
+            {
+                return false;
+            }
+
+            // Check if custom doctor name is required and provided
+            if (SelectedDoctorName == "Other" && string.IsNullOrWhiteSpace(CustomDoctorName))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void SaveLocalAsync()
@@ -813,7 +848,18 @@ namespace AlenkaAssistant.ViewModels
         private bool CanPrint()
         {
             // Can print if basic fields are filled
-            return !string.IsNullOrWhiteSpace(Uid) && CostsList.Count > 0;
+            if (!(!string.IsNullOrWhiteSpace(Uid) && CostsList.Count > 0))
+            {
+                return false;
+            }
+
+            // Check if custom doctor name is required and provided
+            if (SelectedDoctorName == "Other" && string.IsNullOrWhiteSpace(CustomDoctorName))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         private void Print()
@@ -846,15 +892,31 @@ namespace AlenkaAssistant.ViewModels
 
         private PurchaseRequestModel BuildPurchaseRequestModel()
         {
+            // Collect assistant names from the AssistantsList
+            var assistantNames = new List<string>();
+            foreach (var assistant in AssistantsList)
+            {
+                var finalName = assistant.GetFinalName();
+                if (!string.IsNullOrWhiteSpace(finalName))
+                {
+                    assistantNames.Add(finalName);
+                }
+            }
+
+            // Get the doctor name - use custom name if "Other" is selected
+            string doctorName = SelectedDoctorName;
+            if (SelectedDoctorName == "Other" && !string.IsNullOrWhiteSpace(CustomDoctorName))
+            {
+                doctorName = CustomDoctorName;
+            }
+
             var model = new PurchaseRequestModel
             {
                 UserId = NoRmFormatter.FormatRmForOutput(Uid),
                 GeneralTreatmentDesc = "",
                 TreatmentType = TreatmentType.Lainnya,
-                DoctorName = SelectedDoctorName,
-                AssistantNames = string.IsNullOrWhiteSpace(SelectedAssistantName)
-                    ? new List<string>()
-                    : new List<string> { SelectedAssistantName },
+                DoctorName = doctorName,
+                AssistantNames = assistantNames,
                 CreatedAt = GetDateTimeFromInputs(),
                 TotalCost = TotalCost,
                 CostDetails = new List<CostModel>()

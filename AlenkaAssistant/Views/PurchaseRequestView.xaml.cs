@@ -120,25 +120,34 @@ namespace AlenkaAssistant.Views
                         }
                     }
 
-                    // Load assistant name - now string-based from config
+                    // Load assistant names - now using AssistantsList with config-driven dropdown
                     if (lastSavedRequest.AssistantNames != null && lastSavedRequest.AssistantNames.Count > 0)
                     {
-                        string assistantName = lastSavedRequest.AssistantNames[0];
-                        if (viewModel.AssistantNamesForList != null && viewModel.AssistantNamesForList.Contains(assistantName))
+                        viewModel.AssistantsList.Clear();
+                        foreach (var assistantName in lastSavedRequest.AssistantNames)
                         {
-                            viewModel.SelectedAssistantName = assistantName;
-                        }
-                        else if (viewModel.AssistantNamesForList != null && viewModel.AssistantNamesForList.Count > 0)
-                        {
-                            viewModel.SelectedAssistantName = viewModel.AssistantNamesForList[0];
+                            var assistantItem = new AssistantItem();
+
+                            // Check if the name is in the available list
+                            if (viewModel.AssistantNamesForList != null && viewModel.AssistantNamesForList.Contains(assistantName))
+                            {
+                                assistantItem.SelectedAssistantName = assistantName;
+                                assistantItem.ShowCustomInput = false;
+                            }
+                            else
+                            {
+                                // Must be a custom name, set as "Other"
+                                assistantItem.SelectedAssistantName = "Other";
+                                assistantItem.CustomAssistantName = assistantName;
+                                assistantItem.ShowCustomInput = true;
+                            }
+
+                            viewModel.AssistantsList.Add(assistantItem);
                         }
                     }
                     else
                     {
-                        if (viewModel.AssistantNamesForList != null && viewModel.AssistantNamesForList.Count > 0)
-                        {
-                            viewModel.SelectedAssistantName = viewModel.AssistantNamesForList[0];
-                        }
+                        viewModel.AssistantsList.Clear();
                     }
 
                     viewModel.SelectedDate = lastSavedRequest.CreatedAt.Date;
