@@ -45,6 +45,7 @@ namespace AlenkaAssistant.ViewModels
 
         private PatientLookupService _patientLookupService;
         private DropdownConfigService _dropdownConfigService;
+        private AddPatientService _addPatientService;
         private string _patientName;
         private string _patientLookupMessage;
         private bool _isPatientLookupLoading;
@@ -264,6 +265,7 @@ namespace AlenkaAssistant.ViewModels
         public ICommand RemoveCostCommand { get; }
         public ICommand AddAssistantCommand { get; }
         public ICommand RemoveAssistantCommand { get; }
+        public ICommand AddPatientCommand { get; }
         public ICommand SaveToGoogleSheetsCommand { get; }
         public ICommand SaveLocalCommand { get; }
         public ICommand PrintCommand { get; }
@@ -305,6 +307,7 @@ namespace AlenkaAssistant.ViewModels
             RemoveCostCommand = new RelayCommand(obj => RemoveCost(obj), obj => CanRemoveCost(obj));
             AddAssistantCommand = new RelayCommand(_ => AddAssistant());
             RemoveAssistantCommand = new RelayCommand(obj => RemoveAssistant(obj));
+            AddPatientCommand = new RelayCommand(_ => ShowAddPatientDialog());
             SaveToGoogleSheetsCommand = new RelayCommand(_ => SaveToGoogleSheetsAsync(), _ => CanSaveToGoogleSheets());
             SaveLocalCommand = new RelayCommand(_ => SaveLocalAsync(), _ => CanSaveLocal());
             PrintCommand = new RelayCommand(_ => Print(), _ => CanPrint());
@@ -332,19 +335,20 @@ namespace AlenkaAssistant.ViewModels
                         SelectedDoctorName = DoctorNames[0];
                     }
 
-                    // Initialize PatientLookupService with deployment URL
+                    // Initialize PatientLookupService and AddPatientService with deployment URL
                     try
                     {
                         string deploymentUrl = _dropdownConfigService.GetDeploymentUrl();
                         if (!string.IsNullOrWhiteSpace(deploymentUrl))
                         {
                             _patientLookupService = new PatientLookupService(deploymentUrl);
-                            System.Diagnostics.Debug.WriteLine("[ViewModel] PatientLookupService initialized");
+                            _addPatientService = new AddPatientService(deploymentUrl);
+                            System.Diagnostics.Debug.WriteLine("[ViewModel] PatientLookupService and AddPatientService initialized");
                         }
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[ViewModel] Error initializing PatientLookupService: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"[ViewModel] Error initializing services: {ex.Message}");
                     }
                 }
                 else
@@ -650,6 +654,38 @@ namespace AlenkaAssistant.ViewModels
             }
         }
 
+        private void ShowAddPatientDialog()
+        {
+            if (_addPatientService == null)
+            {
+                StatusMessage = "✗ Service belum siap. Coba lagi nanti.";
+                return;
+            }
+
+            try
+            {
+                var dialog = new Views.AddPatientDialog();
+                var viewModel = new AddPatientDialogViewModel(dialog, _addPatientService);
+                dialog.DataContext = viewModel;
+
+                bool? result = dialog.ShowDialog();
+
+                if (result == true && dialog.Confirmed)
+                {
+                    // User confirmed adding a new patient
+                    Uid = dialog.RmNumber;
+                    PatientName = dialog.PatientName;
+                    StatusMessage = $"✓ Pasien baru: {dialog.PatientName} ({dialog.RmNumber}) akan disimpan saat mengirim.";
+                    System.Diagnostics.Debug.WriteLine($"[ViewModel] New patient created: RM={dialog.RmNumber}, Name={dialog.PatientName}");
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"✗ Error: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[ViewModel] Error in ShowAddPatientDialog: {ex.Message}");
+            }
+        }
+
         private void AssistantItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             // No longer used
@@ -680,6 +716,30 @@ namespace AlenkaAssistant.ViewModels
             {
                 try
                 {
+                    // First, try to add patient if it's a new patient
+                    if (_addPatientService != null && !string.IsNullOrWhiteSpace(PatientName) && !string.IsNullOrWhiteSpace(Uid))
+                    {
+                        try
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SaveToGoogleSheets] Attempting to add patient: RM={Uid}, Name={PatientName}");
+                            var addResponse = await _addPatientService.AddPatientAsync(Uid, PatientName);
+
+                            if (addResponse.Success)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[SaveToGoogleSheets] Patient added successfully");
+                            }
+                            else if (!string.IsNullOrWhiteSpace(addResponse.Error))
+                            {
+                                // Log error but continue - patient may already exist
+                                System.Diagnostics.Debug.WriteLine($"[SaveToGoogleSheets] Note: {addResponse.Error}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SaveToGoogleSheets] Error adding patient (continuing): {ex.Message}");
+                        }
+                    }
+
                     var googleSheetsService = new Services.GoogleSheetsService();
 
                     // Try to load config from application directory
@@ -696,20 +756,8 @@ namespace AlenkaAssistant.ViewModels
                         return;
                     }
 
-                    // Create purchase request model from form data
-                    var purchaseRequest = new PurchaseRequestModel
-                    {
-                        UserId = NoRmFormatter.FormatRmForOutput(Uid), // Format RM as A.xxxx
-                        GeneralTreatmentDesc = "",
-                        TreatmentType = TreatmentType.Lainnya,
-                        DoctorName = SelectedDoctorName,
-                        AssistantNames = string.IsNullOrWhiteSpace(SelectedAssistantName) 
-                            ? new List<string>() 
-                            : new List<string> { SelectedAssistantName },
-                        CreatedAt = GetDateTimeFromInputs(),
-                        TotalCost = TotalCost,
-                        CostDetails = CostsList.ToList()
-                    };
+                    // Build purchase request using the method that handles custom doctor names
+                    var purchaseRequest = BuildPurchaseRequestModel();
 
                     // Append to Google Sheet
                     bool success = await googleSheetsService.AppendPurchaseRequestAsync(purchaseRequest);
@@ -867,6 +915,31 @@ namespace AlenkaAssistant.ViewModels
             try
             {
                 StatusMessage = "Generating print preview...";
+
+                // Try to add patient if it's a new patient
+                if (_addPatientService != null && !string.IsNullOrWhiteSpace(PatientName) && !string.IsNullOrWhiteSpace(Uid))
+                {
+                    try
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Print] Attempting to add patient: RM={Uid}, Name={PatientName}");
+                        _ = Task.Run(async () =>
+                        {
+                            var addResponse = await _addPatientService.AddPatientAsync(Uid, PatientName);
+                            if (addResponse.Success)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Print] Patient added successfully");
+                            }
+                            else if (!string.IsNullOrWhiteSpace(addResponse.Error))
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[Print] Note: {addResponse.Error}");
+                            }
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[Print] Error adding patient (continuing): {ex.Message}");
+                    }
+                }
 
                 var printService = new PrintService();
 

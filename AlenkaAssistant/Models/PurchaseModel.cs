@@ -232,5 +232,6 @@ namespace AlenkaAssistant.Models
         public List<string>? AssistantNames { get; set; }
         public string? DoctorName { get; set; }
         public List<CostModel>? CostDetails { get; set; }
+        public bool IsSavedToPatients { get; set; } = false;
     }
 }

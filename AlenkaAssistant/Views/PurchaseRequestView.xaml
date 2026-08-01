@@ -34,11 +34,24 @@
 
             <!-- UID TextBox -->
             <StackPanel Margin="0,0,0,20">
-                <TextBlock Text="No. RM" 
-                           FontSize="14" 
-                           FontWeight="SemiBold" 
-                           Margin="0,0,0,8"
-                           Foreground="#555555"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="No. RM" 
+                               FontSize="14" 
+                               FontWeight="SemiBold"
+                               Foreground="#555555"
+                               VerticalAlignment="Center"/>
+                    <Button Command="{Binding AddPatientCommand}" 
+                            Content="Tambah Pasien" 
+                            Width="120" 
+                            Height="30" 
+                            Margin="10,0,0,0"
+                            Background="#FF9800"
+                            Foreground="White"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"/>
+                </StackPanel>
                 <TextBox x:Name="UidTextBox"
                          Text="{Binding Uid, UpdateSourceTrigger=PropertyChanged}" 
                          Height="40" 

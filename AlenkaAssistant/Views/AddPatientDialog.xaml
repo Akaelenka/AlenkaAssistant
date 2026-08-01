@@ -1,0 +1,126 @@
+<Window x:Class="AlenkaAssistant.Views.AddPatientDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Tambah Pasien Baru" 
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterOwner"
+        Background="#F5F5F5"
+        Topmost="True">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </Window.Resources>
+
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0"
+                   Text="Tambah Pasien Baru"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Foreground="#333333"
+                   Margin="0,0,0,20"/>
+
+        <!-- Loading Indicator -->
+        <StackPanel Grid.Row="1" Visibility="{Binding IsLoadingLastRm, Converter={StaticResource BoolToVisibilityConverter}}">
+            <TextBlock Text="🔄 Mengambil nomor RM terakhir..."
+                       FontSize="12"
+                       Foreground="#0066CC"
+                       Margin="0,0,0,15"/>
+        </StackPanel>
+
+        <!-- Error Message -->
+        <TextBlock Grid.Row="2"
+                   Text="{Binding ErrorMessage}"
+                   FontSize="12"
+                   Foreground="#D9534F"
+                   TextWrapping="Wrap"
+                   Visibility="{Binding HasError, Converter={StaticResource BoolToVisibilityConverter}}"
+                   Margin="0,0,0,15"/>
+
+        <!-- RM Number Section -->
+        <StackPanel Grid.Row="3" Margin="0,0,0,15">
+            <TextBlock Text="Nomor RM"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="#555555"
+                       Margin="0,0,0,8"/>
+            <TextBox Text="{Binding RmNumber, UpdateSourceTrigger=PropertyChanged}"
+                     Height="35"
+                     Padding="12,8"
+                     FontSize="12"
+                     Background="White"
+                     BorderThickness="1"
+                     BorderBrush="#CCCCCC"
+                     IsReadOnly="{Binding IsLoadingLastRm}"
+                     Foreground="#555555"/>
+            <TextBlock Text="{Binding RmSuggestion}"
+                       FontSize="11"
+                       Foreground="#666666"
+                       FontStyle="Italic"
+                       Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Patient Name Section -->
+        <StackPanel Grid.Row="4" Margin="0,0,0,20">
+            <TextBlock Text="Nama Pasien"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="#555555"
+                       Margin="0,0,0,8"/>
+            <TextBox Text="{Binding PatientName, UpdateSourceTrigger=PropertyChanged}"
+                     Height="35"
+                     Padding="12,8"
+                     FontSize="12"
+                     Background="White"
+                     BorderThickness="1"
+                     BorderBrush="#CCCCCC"
+                     IsReadOnly="{Binding IsLoadingLastRm}"
+                     Foreground="#555555"/>
+        </StackPanel>
+
+        <!-- Info Message -->
+        <TextBlock Grid.Row="5"
+                   Text="⚠ Pasien akan disimpan ke sheet saat Anda mengklik Print atau Kirim ke Google Sheets."
+                   FontSize="11"
+                   Foreground="#FF6F00"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,20"/>
+
+        <!-- Action Buttons -->
+        <StackPanel Grid.Row="6" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right"
+                    Margin="0,0,0,0">
+            <Button Command="{Binding CancelCommand}"
+                    Content="Batal"
+                    Width="100"
+                    Height="35"
+                    Background="#CCCCCC"
+                    Foreground="#333333"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Cursor="Hand"
+                    Margin="0,0,10,0"/>
+            <Button Command="{Binding ConfirmCommand}"
+                    Content="Simpan"
+                    Width="100"
+                    Height="35"
+                    Background="#4CAF50"
+                    Foreground="White"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Cursor="Hand"
+                    IsEnabled="{Binding CanConfirm}"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -15,7 +15,7 @@
 const SPREADSHEET_ID = "YOUR_SPREADSHEET_ID";
 
 /**
- * Handle POST requests for data submission
+ * Handle POST requests for data submission and patient addition
  */
 function doPost(e) {
   try {
@@ -32,6 +32,27 @@ function doPost(e) {
 
 	Logger.log("POST data received, parsing...");
 	const payload = JSON.parse(e.postData.contents);
+	const action = payload.action || "append";
+
+	Logger.log("Action: " + action);
+
+	// Handle patient addition
+	if (action === "addPatient") {
+	  Logger.log("Processing addPatient action");
+	  const sheetName = payload.sheetName || "NoRM";
+	  const rmNumber = payload.rmNumber || "";
+	  const patientName = payload.patientName || "";
+	  const rmColumn = payload.rmColumn !== undefined ? payload.rmColumn : 0;
+	  const patientNameColumn = payload.patientNameColumn !== undefined ? payload.patientNameColumn : 1;
+
+	  const result = addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNameColumn);
+	  Logger.log("=== doPost addPatient SUCCESS ===");
+	  return ContentService
+		.createTextOutput(JSON.stringify(result))
+		.setMimeType(ContentService.MimeType.JSON);
+	}
+
+	// Handle regular data appending
 	const sheetName = payload.sheetName || "Sheet1";
 	const appendColumn = payload.appendColumn !== undefined ? payload.appendColumn : null;
 
@@ -67,7 +88,7 @@ function doPost(e) {
 }
 
 /**
- * Handle GET requests for patient lookup
+ * Handle GET requests for patient lookup and RM retrieval
  */
 function doGet(e) {
   try {
@@ -79,6 +100,13 @@ function doGet(e) {
 
 	if (action === "lookup") {
 	  const result = lookupPatientData(sheetName, searchColumn, searchValue, resultColumn);
+	  return ContentService
+		.createTextOutput(JSON.stringify(result))
+		.setMimeType(ContentService.MimeType.JSON);
+	}
+
+	if (action === "getLastRm") {
+	  const result = getLastRmFromSheet(sheetName, searchColumn);
 	  return ContentService
 		.createTextOutput(JSON.stringify(result))
 		.setMimeType(ContentService.MimeType.JSON);
@@ -233,6 +261,133 @@ function appendToSheet(sheetName, values, appendColumn) {
 	Logger.log("Error message: " + error.toString());
 	Logger.log("Stack: " + error.stack);
 	throw error;
+  }
+}
+
+/**
+ * Get the last RM number from a sheet
+ */
+function getLastRmFromSheet(sheetName, rmColumn) {
+  try {
+    Logger.log("=== getLastRmFromSheet START ===");
+    Logger.log("Sheet Name: " + sheetName);
+    Logger.log("RM Column: " + rmColumn);
+
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(sheetName);
+
+    if (!sheet) {
+      Logger.log("ERROR: Sheet not found - " + sheetName);
+      return { success: false, error: "Sheet not found: " + sheetName };
+    }
+
+    const columnLetter = String.fromCharCode(65 + rmColumn);
+    Logger.log("Column letter: " + columnLetter);
+
+    const lastRow = sheet.getLastRow();
+    Logger.log("Last row: " + lastRow);
+
+    if (lastRow < 2) {
+      Logger.log("No data found in sheet");
+      return { 
+        success: true, 
+        lastRm: null,
+        lastRow: lastRow,
+        message: "No data in sheet, start with A.0001"
+      };
+    }
+
+    // Get the last non-empty RM value in the column
+    const columnData = sheet.getRange(columnLetter + ":" + columnLetter).getValues();
+    let lastRm = null;
+
+    // Scan from bottom to find the last non-empty RM
+    for (let i = columnData.length - 1; i >= 1; i--) {
+      const cellValue = String(columnData[i][0]).trim();
+      if (cellValue && cellValue.length > 0) {
+        lastRm = cellValue;
+        Logger.log("Found last RM at row " + (i + 1) + ": " + lastRm);
+        break;
+      }
+    }
+
+    if (!lastRm) {
+      Logger.log("No RM values found");
+      return { 
+        success: true, 
+        lastRm: null,
+        lastRow: lastRow,
+        message: "No RM values found, start with A.0001"
+      };
+    }
+
+    Logger.log("=== getLastRmFromSheet SUCCESS ===");
+    return {
+      success: true,
+      lastRm: lastRm,
+      lastRow: lastRow
+    };
+  } catch (error) {
+    Logger.log("=== getLastRmFromSheet ERROR ===");
+    Logger.log("Error: " + error.toString());
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Add a new patient to the NoRM sheet via POST
+ */
+function addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNameColumn) {
+  try {
+    Logger.log("=== addPatientToSheet START ===");
+    Logger.log("Sheet Name: " + sheetName);
+    Logger.log("RM Number: " + rmNumber);
+    Logger.log("Patient Name: " + patientName);
+    Logger.log("RM Column: " + rmColumn);
+    Logger.log("Patient Name Column: " + patientNameColumn);
+
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(sheetName);
+
+    if (!sheet) {
+      Logger.log("ERROR: Sheet not found - " + sheetName);
+      return { success: false, error: "Sheet not found: " + sheetName };
+    }
+
+    if (!rmNumber || !patientName) {
+      Logger.log("ERROR: Missing RM or patient name");
+      return { success: false, error: "RM number and patient name are required" };
+    }
+
+    // Find the last row and add new entry
+    const lastRow = sheet.getLastRow();
+    const newRow = lastRow + 1;
+
+    Logger.log("Adding new patient at row: " + newRow);
+
+    // Create a row with the RM and patient name at the correct columns
+    const maxColumns = Math.max(rmColumn, patientNameColumn) + 1;
+    const newValues = new Array(maxColumns).fill("");
+
+    newValues[rmColumn] = rmNumber;
+    newValues[patientNameColumn] = patientName;
+
+    Logger.log("Setting values at row " + newRow + ": RM=" + rmNumber + ", Patient=" + patientName);
+    const range = sheet.getRange(newRow, 1, 1, maxColumns);
+    range.setValues([newValues]);
+
+    Logger.log("=== addPatientToSheet SUCCESS ===");
+    return {
+      success: true,
+      message: "Patient added successfully",
+      newRow: newRow,
+      rmNumber: rmNumber,
+      patientName: patientName
+    };
+  } catch (error) {
+    Logger.log("=== addPatientToSheet ERROR ===");
+    Logger.log("Error: " + error.toString());
+    return { success: false, error: error.toString() };
   }
 }
 
