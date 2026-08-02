@@ -4,14 +4,27 @@
  * DEPLOYMENT INSTRUCTIONS:
  * 1. Create a new Google Apps Script project at https://script.google.com
  * 2. Copy this entire code into the Script Editor
- * 3. Set SPREADSHEET_ID to your Google Sheet ID (from the URL)
+ * 3. Set SPREADSHEET_ID to your default Google Sheet ID (from the URL)
  * 4. Deploy as a web app: Deploy > New Deployment > Web app
  *    - Execute as: Your Google account
  *    - Who has access: Anyone
  * 5. Copy the deployment URL and add it to GoogleSheetsConfig.json as "deploymentUrl"
+ * 
+ * MULTI-SPREADSHEET SUPPORT:
+ * This script supports multiple spreadsheets through dynamic parameters:
+ * - POST requests: Include "spreadsheetId" in JSON payload
+ * - GET requests: Include "spreadsheetId" as query parameter
+ * - Sheet names are passed dynamically as "sheetName" parameter
+ * - If spreadsheetId is not provided, falls back to SPREADSHEET_ID below
+ * 
+ * CONFIGURATION IN GoogleSheetsConfig.json:
+ * - "spreadsheetId": Main spreadsheet for purchase requests
+ * - "noRmSpreadsheetId": Separate spreadsheet for NoRM patient data (optional)
+ * - "noRmSheetName": Sheet name in NoRM spreadsheet (default "NoRM")
+ * - "sheetName": Sheet name in main spreadsheet (default "2026")
  */
 
-// Configuration - Set this to your Google Sheet ID
+// Configuration - Set this to your default Google Sheet ID (fallback value)
 const SPREADSHEET_ID = "YOUR_SPREADSHEET_ID";
 
 /**
@@ -33,8 +46,10 @@ function doPost(e) {
 	Logger.log("POST data received, parsing...");
 	const payload = JSON.parse(e.postData.contents);
 	const action = payload.action || "append";
+	const spreadsheetId = payload.spreadsheetId || SPREADSHEET_ID;
 
 	Logger.log("Action: " + action);
+	Logger.log("Using spreadsheetId: " + spreadsheetId);
 
 	// Handle patient addition
 	if (action === "addPatient") {
@@ -45,7 +60,7 @@ function doPost(e) {
 	  const rmColumn = payload.rmColumn !== undefined ? payload.rmColumn : 0;
 	  const patientNameColumn = payload.patientNameColumn !== undefined ? payload.patientNameColumn : 1;
 
-	  const result = addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNameColumn);
+	  const result = addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNameColumn, spreadsheetId);
 	  Logger.log("=== doPost addPatient SUCCESS ===");
 	  return ContentService
 		.createTextOutput(JSON.stringify(result))
@@ -68,7 +83,7 @@ function doPost(e) {
 	}
 
 	Logger.log("Calling appendToSheet...");
-	const result = appendToSheet(sheetName, payload.values, appendColumn);
+	const result = appendToSheet(sheetName, payload.values, appendColumn, spreadsheetId);
 	Logger.log("appendToSheet completed successfully");
 
 	Logger.log("=== doPost SUCCESS ===");
@@ -97,16 +112,19 @@ function doGet(e) {
 	const searchColumn = parseInt(e.parameter.searchColumn || 0);
 	const searchValue = (e.parameter.searchValue || "").trim();
 	const resultColumn = parseInt(e.parameter.resultColumn || 1);
+	const spreadsheetId = e.parameter.spreadsheetId || SPREADSHEET_ID;
+
+	Logger.log("doGet - Action: " + action + ", SpreadsheetId: " + spreadsheetId);
 
 	if (action === "lookup") {
-	  const result = lookupPatientData(sheetName, searchColumn, searchValue, resultColumn);
+	  const result = lookupPatientData(sheetName, searchColumn, searchValue, resultColumn, spreadsheetId);
 	  return ContentService
 		.createTextOutput(JSON.stringify(result))
 		.setMimeType(ContentService.MimeType.JSON);
 	}
 
 	if (action === "getLastRm") {
-	  const result = getLastRmFromSheet(sheetName, searchColumn);
+	  const result = getLastRmFromSheet(sheetName, searchColumn, spreadsheetId);
 	  return ContentService
 		.createTextOutput(JSON.stringify(result))
 		.setMimeType(ContentService.MimeType.JSON);
@@ -126,9 +144,10 @@ function doGet(e) {
 /**
  * Lookup patient data from a sheet
  */
-function lookupPatientData(sheetName, searchColumn, searchValue, resultColumn) {
+function lookupPatientData(sheetName, searchColumn, searchValue, resultColumn, spreadsheetId) {
   try {
-	const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+	const ssId = spreadsheetId || SPREADSHEET_ID;
+	const ss = SpreadsheetApp.openById(ssId);
 	const sheet = ss.getSheetByName(sheetName);
 
 	if (!sheet) {
@@ -181,7 +200,7 @@ function lookupPatientData(sheetName, searchColumn, searchValue, resultColumn) {
 /**
  * Append data to a specific sheet
  */
-function appendToSheet(sheetName, values, appendColumn) {
+function appendToSheet(sheetName, values, appendColumn, spreadsheetId) {
   try {
 	Logger.log("=== appendToSheet START ===");
 	Logger.log("Sheet Name: " + sheetName);
@@ -189,7 +208,8 @@ function appendToSheet(sheetName, values, appendColumn) {
 	Logger.log("Append Column: " + appendColumn);
 
 	Logger.log("Opening spreadsheet...");
-	const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+	const ssId = spreadsheetId || SPREADSHEET_ID;
+	const ss = SpreadsheetApp.openById(ssId);
 	Logger.log("Spreadsheet opened successfully");
 
 	Logger.log("Getting sheet: " + sheetName);
@@ -267,13 +287,14 @@ function appendToSheet(sheetName, values, appendColumn) {
 /**
  * Get the last RM number from a sheet
  */
-function getLastRmFromSheet(sheetName, rmColumn) {
+function getLastRmFromSheet(sheetName, rmColumn, spreadsheetId) {
   try {
     Logger.log("=== getLastRmFromSheet START ===");
     Logger.log("Sheet Name: " + sheetName);
     Logger.log("RM Column: " + rmColumn);
 
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ssId = spreadsheetId || SPREADSHEET_ID;
+    const ss = SpreadsheetApp.openById(ssId);
     const sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {
@@ -337,7 +358,7 @@ function getLastRmFromSheet(sheetName, rmColumn) {
 /**
  * Add a new patient to the NoRM sheet via POST
  */
-function addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNameColumn) {
+function addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNameColumn, spreadsheetId) {
   try {
     Logger.log("=== addPatientToSheet START ===");
     Logger.log("Sheet Name: " + sheetName);
@@ -346,7 +367,8 @@ function addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNa
     Logger.log("RM Column: " + rmColumn);
     Logger.log("Patient Name Column: " + patientNameColumn);
 
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ssId = spreadsheetId || SPREADSHEET_ID;
+    const ss = SpreadsheetApp.openById(ssId);
     const sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {

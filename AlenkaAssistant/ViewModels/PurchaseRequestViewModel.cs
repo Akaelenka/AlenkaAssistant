@@ -339,10 +339,12 @@ namespace AlenkaAssistant.ViewModels
                     try
                     {
                         string deploymentUrl = _dropdownConfigService.GetDeploymentUrl();
+                        string noRmSpreadsheetId = _dropdownConfigService.GetNoRmSpreadsheetId();
+                        string noRmSheetName = _dropdownConfigService.GetNoRmSheetName();
                         if (!string.IsNullOrWhiteSpace(deploymentUrl))
                         {
-                            _patientLookupService = new PatientLookupService(deploymentUrl);
-                            _addPatientService = new AddPatientService(deploymentUrl);
+                            _patientLookupService = new PatientLookupService(deploymentUrl, noRmSpreadsheetId, noRmSheetName);
+                            _addPatientService = new AddPatientService(deploymentUrl, noRmSpreadsheetId, noRmSheetName);
                             System.Diagnostics.Debug.WriteLine("[ViewModel] PatientLookupService and AddPatientService initialized");
                         }
                     }

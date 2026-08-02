@@ -27,28 +27,35 @@ namespace AlenkaAssistant.Services
     public class PatientLookupService
     {
         private readonly string _deploymentUrl;
+        private readonly string _noRmSpreadsheetId;
+        private readonly string _noRmSheetName;
         private readonly HttpClient _httpClient;
 
-        public PatientLookupService(string deploymentUrl)
+        public PatientLookupService(string deploymentUrl, string noRmSpreadsheetId = null, string noRmSheetName = "NoRM")
         {
             _deploymentUrl = deploymentUrl;
+            _noRmSpreadsheetId = noRmSpreadsheetId;
+            _noRmSheetName = noRmSheetName;
             _httpClient = new HttpClient();
         }
 
         /// <summary>
         /// Lookup patient name by RM number
         /// </summary>
-        /// <param name="sheetName">Sheet name to search in</param>
+        /// <param name="sheetName">Sheet name to search in (defaults to configured NoRM sheet name)</param>
         /// <param name="rmNumber">RM number (can be in format "1001" or "A.1001")</param>
         /// <param name="searchColumn">Column index to search (0-based)</param>
         /// <param name="resultColumn">Column index for result (0-based)</param>
         /// <returns>PatientLookupResponse with patient name or error</returns>
         public async Task<PatientLookupResponse> LookupPatientAsync(
-            string sheetName,
-            string rmNumber,
+            string sheetName = null,
+            string rmNumber = null,
             int searchColumn = 0,
             int resultColumn = 1)
         {
+            // Use configured noRmSheetName if sheetName not provided
+            sheetName = sheetName ?? _noRmSheetName;
+
             try
             {
                 if (string.IsNullOrWhiteSpace(rmNumber))
@@ -70,6 +77,11 @@ namespace AlenkaAssistant.Services
 
                 // Build query URL
                 string queryUrl = $"{_deploymentUrl}?action=lookup&sheetName={Uri.EscapeDataString(sheetName)}&searchColumn={searchColumn}&searchValue={Uri.EscapeDataString(searchValue)}&resultColumn={resultColumn}";
+
+                if (!string.IsNullOrWhiteSpace(_noRmSpreadsheetId))
+                {
+                    queryUrl += $"&spreadsheetId={Uri.EscapeDataString(_noRmSpreadsheetId)}";
+                }
 
                 System.Diagnostics.Debug.WriteLine($"[PatientLookupService] Querying: {queryUrl}");
 

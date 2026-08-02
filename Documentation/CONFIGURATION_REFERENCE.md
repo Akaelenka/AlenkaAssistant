@@ -7,8 +7,14 @@
 {
   "deploymentUrl": "https://script.google.com/macros/d/1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p/userweb",
   "spreadsheetId": "1BxiMVs0XRA5nFMXT3PJiEkVQZGzGkL8JzIgnKPZCH3c",
-  "sheetName": "Sheet1",
-  "enabled": true
+  "noRmSpreadsheetId": "YOUR_NORM_SPREADSHEET_ID",
+  "sheetName": "2026",
+  "enabled": true,
+  "patientLookup": {
+    "noRmSheetName": "NoRM",
+    "rmColumn": 0,
+    "patientNameColumn": 1
+  }
 }
 ```
 
@@ -16,6 +22,41 @@
 ```
 https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMXT3PJiEkVQZGzGkL8JzIgnKPZCH3c/edit
 ```
+
+---
+
+## Example 2: Separate NoRM Spreadsheet (Advanced)
+
+If you want to keep patient data in a separate Google Sheet:
+
+**Main Spreadsheet (Purchase Requests):**
+- ID: `1BxiMVs0XRA5nFMXT3PJiEkVQZGzGkL8JzIgnKPZCH3c`
+- Sheet: "2026"
+
+**NoRM Spreadsheet (Patient Data):**
+- ID: `1DxiMVs0XRA5nFMXT3PJiEkVQZGzGkL8JzIgnKPZCH3d`
+- Sheet: "Pasien" (or any custom name)
+
+**GoogleSheetsConfig.json:**
+```json
+{
+  "deploymentUrl": "https://script.google.com/macros/d/1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p/userweb",
+  "spreadsheetId": "1BxiMVs0XRA5nFMXT3PJiEkVQZGzGkL8JzIgnKPZCH3c",
+  "noRmSpreadsheetId": "1DxiMVs0XRA5nFMXT3PJiEkVQZGzGkL8JzIgnKPZCH3d",
+  "sheetName": "2026",
+  "enabled": true,
+  "patientLookup": {
+	"noRmSheetName": "Pasien",
+	"rmColumn": 0,
+	"patientNameColumn": 1
+  }
+}
+```
+
+**Key Differences:**
+- `noRmSpreadsheetId` is set to the separate spreadsheet ID
+- `noRmSheetName` matches the sheet name in that spreadsheet ("Pasien")
+- The Apps Script automatically routes requests to the correct spreadsheet
 
 ---
 
@@ -40,7 +81,7 @@ https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMXT3PJiEkVQZGzGkL8JzIgnKPZC
 1. Look at the sheet tabs at the bottom of your Google Sheet
 2. Default is "Sheet1"
 3. If you renamed it, use the exact name (case-sensitive)
-4. Example sheet names: "Data", "Purchases", "2024 Requests"
+4. Example sheet names: "Data", "Purchases", "2024 Requests", "Pasien", "NoRM"
 
 ---
 
@@ -92,9 +133,13 @@ https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMXT3PJiEkVQZGzGkL8JzIgnKPZC
 | Field | Type | Required | Description | Example |
 |-------|------|----------|-------------|---------|
 | `deploymentUrl` | string | Yes | Google Apps Script web app URL | `https://script.google.com/macros/d/ABC123/userweb` |
-| `spreadsheetId` | string | Yes | Google Sheet ID (from URL) | `1BxiMVs0XRA5nFMXT3PJiEkVQZGzGkL8JzIgnKPZCH3c` |
-| `sheetName` | string | Yes | Sheet name (case-sensitive) | `Sheet1` or `Data` |
+| `spreadsheetId` | string | Yes | Google Sheet ID for main purchase requests | `1BxiMVs0XRA5nFMXT3PJiEkVQZGzGkL8JzIgnKPZCH3c` |
+| `noRmSpreadsheetId` | string | Optional | Separate Google Sheet ID for NoRM patient data | `1DxiMVs0XRA5nFMXT3PJiEkVQZGzGkL8JzIgnKPZCH3d` |
+| `sheetName` | string | Yes | Sheet name in main spreadsheet (case-sensitive) | `Sheet1` or `Data` |
 | `enabled` | boolean | Yes | Enable/disable this feature | `true` or `false` |
+| `patientLookup.noRmSheetName` | string | Optional (nested) | Sheet name in NoRM spreadsheet (case-sensitive) | `NoRM` or `Pasien` |
+| `patientLookup.rmColumn` | integer | Yes (nested) | Column index for RM numbers (0-based) | `0` |
+| `patientLookup.patientNameColumn` | integer | Yes (nested) | Column index for patient names (0-based) | `1` |
 
 ---
 

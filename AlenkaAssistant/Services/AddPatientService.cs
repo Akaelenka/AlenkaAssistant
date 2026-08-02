@@ -54,6 +54,8 @@ namespace AlenkaAssistant.Services
     public class AddPatientService
     {
         private readonly string _deploymentUrl;
+        private readonly string _noRmSpreadsheetId;
+        private readonly string _noRmSheetName;
         private readonly string _patientLookupSheetName;
         private readonly int _rmColumn;
         private readonly int _patientNameColumn;
@@ -61,11 +63,15 @@ namespace AlenkaAssistant.Services
 
         public AddPatientService(
             string deploymentUrl,
+            string noRmSpreadsheetId = null,
+            string noRmSheetName = "NoRM",
             string patientLookupSheetName = "NoRM",
             int rmColumn = 0,
             int patientNameColumn = 1)
         {
             _deploymentUrl = deploymentUrl;
+            _noRmSpreadsheetId = noRmSpreadsheetId;
+            _noRmSheetName = noRmSheetName;
             _patientLookupSheetName = patientLookupSheetName;
             _rmColumn = rmColumn;
             _patientNameColumn = patientNameColumn;
@@ -80,7 +86,12 @@ namespace AlenkaAssistant.Services
         {
             try
             {
-                string queryUrl = $"{_deploymentUrl}?action=getLastRm&sheetName={Uri.EscapeDataString(_patientLookupSheetName)}&rmColumn={_rmColumn}";
+                string queryUrl = $"{_deploymentUrl}?action=getLastRm&sheetName={Uri.EscapeDataString(_noRmSheetName)}&rmColumn={_rmColumn}";
+
+                if (!string.IsNullOrWhiteSpace(_noRmSpreadsheetId))
+                {
+                    queryUrl += $"&spreadsheetId={Uri.EscapeDataString(_noRmSpreadsheetId)}";
+                }
 
                 System.Diagnostics.Debug.WriteLine($"[AddPatientService] Getting last RM from: {queryUrl}");
 
@@ -145,7 +156,12 @@ namespace AlenkaAssistant.Services
                 }
 
                 // Build query URL
-                string queryUrl = $"{_deploymentUrl}?action=addPatient&sheetName={Uri.EscapeDataString(_patientLookupSheetName)}&rm={Uri.EscapeDataString(rmNumber)}&patientName={Uri.EscapeDataString(patientName)}&rmColumn={_rmColumn}&patientNameColumn={_patientNameColumn}";
+                string queryUrl = $"{_deploymentUrl}?action=addPatient&sheetName={Uri.EscapeDataString(_noRmSheetName)}&rm={Uri.EscapeDataString(rmNumber)}&patientName={Uri.EscapeDataString(patientName)}&rmColumn={_rmColumn}&patientNameColumn={_patientNameColumn}";
+
+                if (!string.IsNullOrWhiteSpace(_noRmSpreadsheetId))
+                {
+                    queryUrl += $"&spreadsheetId={Uri.EscapeDataString(_noRmSpreadsheetId)}";
+                }
 
                 System.Diagnostics.Debug.WriteLine($"[AddPatientService] Adding patient: {rmNumber} - {patientName}");
 

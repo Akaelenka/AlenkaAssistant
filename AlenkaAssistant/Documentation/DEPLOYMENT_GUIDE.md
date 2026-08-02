@@ -48,6 +48,28 @@ If you don't know which project, check your GoogleSheetsConfig.json for the depl
 
 ---
 
+### Optional: Separate NoRM Spreadsheet (Advanced)
+
+If you want to keep patient data (NoRM sheet) in a separate Google Sheet from your main purchase requests:
+
+1. **Create a new Google Sheet** for NoRM data (or use an existing one)
+2. **Add one sheet named "NoRM"** with columns: RM Number (column A), Patient Name (column B)
+3. **Get the Spreadsheet ID** from the URL
+4. **Update GoogleSheetsConfig.json:**
+   ```json
+   {
+     "deploymentUrl": "YOUR_DEPLOYMENT_URL",
+     "spreadsheetId": "YOUR_MAIN_SPREADSHEET_ID",
+     "noRmSpreadsheetId": "YOUR_NORM_SPREADSHEET_ID",
+     ...
+   }
+   ```
+5. **Save and restart** the application
+
+If `noRmSpreadsheetId` is not set or is empty, the app will use the main `spreadsheetId` for both purposes (keeping everything in one sheet).
+
+---
+
 ### Step 2: Copy the Google Apps Script Code (2 minutes)
 
 1. In this Documentation folder, find: `GOOGLE_APPS_SCRIPT_SETUP.md`
