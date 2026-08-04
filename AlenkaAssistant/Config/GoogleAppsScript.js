@@ -140,6 +140,7 @@ function doGet(e) {
 	const action = e.parameter.action || "lookup";
 	const sheetName = e.parameter.sheetName || "NoRM";
 	const searchColumn = parseInt(e.parameter.searchColumn || 0);
+	const rmColumn = parseInt(e.parameter.rmColumn || searchColumn);  // rmColumn defaults to searchColumn
 	const searchValue = (e.parameter.searchValue || "").trim();
 	const resultColumn = parseInt(e.parameter.resultColumn || 1);
 	const spreadsheetId = e.parameter.spreadsheetId || SPREADSHEET_ID;
@@ -162,7 +163,7 @@ function doGet(e) {
 	}
 
 	if (action === "getLastRm") {
-	  const result = getLastRmFromSheet(sheetName, searchColumn, spreadsheetId);
+	  const result = getLastRmFromSheet(sheetName, rmColumn, spreadsheetId);
 	  return ContentService
 		.createTextOutput(JSON.stringify(result))
 		.setMimeType(ContentService.MimeType.JSON);
@@ -365,6 +366,7 @@ function getLastRmFromSheet(sheetName, rmColumn, spreadsheetId) {
       return { 
         success: true, 
         lastRm: null,
+        nextRm: "A.0001",
         lastRow: lastRow,
         message: "No data in sheet, start with A.0001"
       };
@@ -389,15 +391,21 @@ function getLastRmFromSheet(sheetName, rmColumn, spreadsheetId) {
       return { 
         success: true, 
         lastRm: null,
+        nextRm: "A.0001",
         lastRow: lastRow,
         message: "No RM values found, start with A.0001"
       };
     }
 
+    // Calculate next RM by incrementing the last one
+    const nextRm = incrementRmNumber(lastRm);
+    Logger.log("Last RM: " + lastRm + ", Next RM: " + nextRm);
+
     Logger.log("=== getLastRmFromSheet SUCCESS ===");
     return {
       success: true,
       lastRm: lastRm,
+      nextRm: nextRm,
       lastRow: lastRow
     };
   } catch (error) {
@@ -468,6 +476,31 @@ function addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNa
     Logger.log("Error: " + error.toString());
     return { success: false, error: error.toString() };
   }
+}
+
+/**
+ * Increment RM number from format "A.xxxx" to next number
+ * Example: "A.0001" ? "A.0002", "A.0009" ? "A.0010"
+ */
+function incrementRmNumber(rmValue) {
+  if (!rmValue) return "A.0001";
+
+  // Extract the number part (remove "A." prefix)
+  let numberPart = String(rmValue).trim();
+
+  if (numberPart.startsWith("A.")) {
+	numberPart = numberPart.substring(2);
+  } else if (numberPart.startsWith("A")) {
+	numberPart = numberPart.substring(1);
+  }
+
+  // Convert to number, increment, and format back to 4 digits
+  let number = parseInt(numberPart) || 0;
+  number++;
+
+  // Pad to 4 digits and format
+  let padded = String(number).padStart(4, "0");
+  return "A." + padded;
 }
 
 /**
