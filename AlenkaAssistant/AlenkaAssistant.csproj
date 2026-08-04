@@ -13,7 +13,6 @@
   <ItemGroup>
 	  <Folder Include="Fonts\" />
 	  <Folder Include="Images\" />
-	  <Folder Include="ViewModels\" />
   </ItemGroup>
 
   <ItemGroup>

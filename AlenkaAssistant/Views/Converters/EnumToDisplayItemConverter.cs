@@ -39,35 +39,13 @@ namespace AlenkaAssistant.Views.Converters
 
         private string GetDisplayName(T enumValue)
         {
-            if (typeof(T) == typeof(DoctorName))
-            {
-                return DoctorNameHelper.GetDisplayName((DoctorName)(object)enumValue);
-            }
-            else if (typeof(T) == typeof(AssistantName))
-            {
-                return AssistantNameHelper.GetDisplayName((AssistantName)(object)enumValue);
-            }
-            else if (typeof(T) == typeof(TreatmentType))
+            if (typeof(T) == typeof(TreatmentType))
             {
                 return TreatmentTypeHelper.GetDisplayName((TreatmentType)(object)enumValue);
             }
 
             return enumValue.ToString();
         }
-    }
-
-    /// <summary>
-    /// Specialized converter for DoctorName enum
-    /// </summary>
-    public class DoctorNameToDisplayItemConverter : EnumToDisplayItemConverter<DoctorName>
-    {
-    }
-
-    /// <summary>
-    /// Specialized converter for AssistantName enum
-    /// </summary>
-    public class AssistantNameToDisplayItemConverter : EnumToDisplayItemConverter<AssistantName>
-    {
     }
 
     /// <summary>

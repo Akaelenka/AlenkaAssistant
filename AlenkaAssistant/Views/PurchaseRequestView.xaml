@@ -12,10 +12,10 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
-        <converters:DoctorNameToDisplayItemConverter x:Key="DoctorNameConverter"/>
-        <converters:AssistantNameToDisplayItemConverter x:Key="AssistantNameConverter"/>
         <converters:TreatmentTypeToDisplayItemConverter x:Key="TreatmentTypeConverter"/>
         <converters:StringPassThroughConverter x:Key="StringPassThroughConverter"/>
+        <converters:MoneyFormatConverter x:Key="MoneyFormatConverter"/>
+        <converters:StatusMessageColorConverter x:Key="StatusMessageColorConverter"/>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -35,11 +35,24 @@
 
             <!-- UID TextBox -->
             <StackPanel Margin="0,0,0,20">
-                <TextBlock Text="No. RM" 
-                           FontSize="14" 
-                           FontWeight="SemiBold" 
-                           Margin="0,0,0,8"
-                           Foreground="#555555"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="No. RM" 
+                               FontSize="14" 
+                               FontWeight="SemiBold"
+                               Foreground="#555555"
+                               VerticalAlignment="Center"/>
+                    <Button Command="{Binding AddPatientCommand}" 
+                            Content="Tambah Pasien" 
+                            Width="120" 
+                            Height="30" 
+                            Margin="10,0,0,0"
+                            Background="#FF9800"
+                            Foreground="White"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"/>
+                </StackPanel>
                 <TextBox x:Name="UidTextBox"
                          Text="{Binding Uid, UpdateSourceTrigger=PropertyChanged}" 
                          Height="40" 
@@ -238,25 +251,31 @@
                                FontSize="11" 
                                FontWeight="SemiBold"
                                Foreground="#555555"
-                               Width="120"
+                               Width="110"
                                Margin="10,0,0,0"/>
                     <TextBlock Text="Biaya" 
                                FontSize="11" 
                                FontWeight="SemiBold"
                                Foreground="#555555"
-                               Width="100"
+                               Width="85"
+                               Margin="10,0,0,0"/>
+                    <TextBlock Text="Qty" 
+                               FontSize="11" 
+                               FontWeight="SemiBold"
+                               Foreground="#555555"
+                               Width="50"
                                Margin="10,0,0,0"/>
                     <TextBlock Text="Diskon" 
                                FontSize="11" 
                                FontWeight="SemiBold"
                                Foreground="#555555"
-                               Width="80"
+                               Width="70"
                                Margin="10,0,0,0"/>
                     <TextBlock Text="" 
                                FontSize="11" 
                                FontWeight="SemiBold"
                                Foreground="#555555"
-                               Width="70"
+                               Width="60"
                                Margin="10,0,0,0"/>
                 </StackPanel>
 
@@ -281,7 +300,7 @@
                                 <ComboBox ItemsSource="{Binding DataContext.TreatmentTypes, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                           SelectedItem="{Binding TreatmentType, Converter={StaticResource TreatmentTypeConverter}, UpdateSourceTrigger=PropertyChanged}"
                                           Height="35"
-                                          Width="120"
+                                          Width="110"
                                           Padding="10,8"
                                           FontSize="12"
                                           Background="White"
@@ -291,10 +310,10 @@
                                           Foreground="#555555"
                                           VerticalAlignment="Center"/>
 
-                                <!-- Cost -->
-                                <TextBox Text="{Binding Cost, UpdateSourceTrigger=PropertyChanged}" 
+                                <!-- Cost with Money Format -->
+                                <TextBox Text="{Binding Cost, Converter={StaticResource MoneyFormatConverter}, UpdateSourceTrigger=PropertyChanged}" 
                                          Height="35" 
-                                         Width="100"
+                                         Width="85"
                                          Padding="10,8" 
                                          FontSize="12"
                                          Background="White"
@@ -302,12 +321,13 @@
                                          BorderBrush="#CCCCCC"
                                          Margin="10,0,0,0"
                                          Foreground="#555555"
-                                         VerticalAlignment="Center"/>
+                                         VerticalAlignment="Center"
+                                         TextAlignment="Right"/>
 
-                                <!-- Discount -->
-                                <TextBox Text="{Binding Discount, UpdateSourceTrigger=PropertyChanged}" 
+                                <!-- Item Count -->
+                                <TextBox Text="{Binding ItemCount, UpdateSourceTrigger=PropertyChanged}" 
                                          Height="35" 
-                                         Width="80"
+                                         Width="50"
                                          Padding="10,8" 
                                          FontSize="12"
                                          Background="White"
@@ -315,13 +335,28 @@
                                          BorderBrush="#CCCCCC"
                                          Margin="10,0,0,0"
                                          Foreground="#555555"
-                                         VerticalAlignment="Center"/>
+                                         VerticalAlignment="Center"
+                                         TextAlignment="Center"/>
+
+                                <!-- Discount with Money Format -->
+                                <TextBox Text="{Binding Discount, Converter={StaticResource MoneyFormatConverter}, UpdateSourceTrigger=PropertyChanged}" 
+                                         Height="35" 
+                                         Width="70"
+                                         Padding="10,8" 
+                                         FontSize="12"
+                                         Background="White"
+                                         BorderThickness="1"
+                                         BorderBrush="#CCCCCC"
+                                         Margin="10,0,0,0"
+                                         Foreground="#555555"
+                                         VerticalAlignment="Center"
+                                         TextAlignment="Right"/>
 
                                 <!-- Delete Button -->
                                 <Button Command="{Binding DataContext.RemoveCostCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
                                         CommandParameter="{Binding}" 
                                         Content="Hapus" 
-                                        Width="70" 
+                                        Width="60" 
                                         Height="35" 
                                         Margin="10,0,0,0"
                                         Background="#f44336"
@@ -355,9 +390,11 @@
             <!-- Status Message -->
             <TextBlock Text="{Binding StatusMessage}" 
                        Margin="0,0,0,20" 
-                       Foreground="#4CAF50" 
+                       Foreground="{Binding StatusMessage, Converter={StaticResource StatusMessageColorConverter}}"
                        FontSize="12"
-                       TextWrapping="Wrap"/>
+                       TextWrapping="Wrap"
+                       MaxWidth="500"
+                       MinHeight="30"/>
             </StackPanel>
         </ScrollViewer>
 
