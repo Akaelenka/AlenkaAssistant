@@ -361,8 +361,12 @@ function appendToSheet(sheetName, values, appendColumn, spreadsheetId) {
 	  const columnLetter = String.fromCharCode(65 + appendColumn);
 	  Logger.log("Column letter: " + columnLetter);
 
-	  const columnData = sheet.getRange(columnLetter + ":" + columnLetter).getValues();
-	  Logger.log("Column data retrieved, length: " + columnData.length);
+	  const lastRow = sheet.getLastRow();
+	  Logger.log("Last row in sheet: " + lastRow);
+
+	  // Only fetch data from existing rows, not the entire column
+	  const columnData = sheet.getRange(columnLetter + "1:" + columnLetter + lastRow).getValues();
+	  Logger.log("Column data retrieved, rows: " + columnData.length);
 
 	  startRow = null;
 	  for (let i = 0; i < columnData.length; i++) {
@@ -375,7 +379,6 @@ function appendToSheet(sheetName, values, appendColumn, spreadsheetId) {
 	  }
 
 	  if (startRow === null) {
-		const lastRow = sheet.getLastRow();
 		startRow = lastRow + 1;
 		Logger.log("No empty cells found, using last row + 1: " + startRow);
 	  }
@@ -566,9 +569,42 @@ function addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNa
       return { success: false, error: "RM number and patient name are required" };
     }
 
-    // Find the last row and add new entry
+    // Extract just the number part from RM (e.g., "A.1001" -> "1001")
+    let rmNumberToSave = rmNumber;
+    if (rmNumber.includes(".")) {
+      const parts = rmNumber.split(".");
+      rmNumberToSave = parts[parts.length - 1]; // Get the last part after the dot
+    }
+
+    Logger.log("RM to save: " + rmNumberToSave);
+
+    // Find the first empty row in the RM column (same logic as appendToSheet)
+    Logger.log("Finding first empty row in RM column: " + rmColumn);
+    const columnLetter = String.fromCharCode(65 + rmColumn);
+    Logger.log("Column letter: " + columnLetter);
+
     const lastRow = sheet.getLastRow();
-    const newRow = lastRow + 1;
+    Logger.log("Last row in sheet: " + lastRow);
+
+    // Only fetch data from existing rows, not the entire column
+    const columnData = sheet.getRange(columnLetter + "1:" + columnLetter + lastRow).getValues();
+    Logger.log("Column data retrieved, rows: " + columnData.length);
+
+    let newRow = null;
+    for (let i = 0; i < columnData.length; i++) {
+      const cellValue = columnData[i][0];
+      if (cellValue === "" || cellValue === null || cellValue === undefined) {
+        newRow = i + 1;
+        Logger.log("Found first empty cell at row: " + newRow);
+        break;
+      }
+    }
+
+    // If no empty cells found, append to the last row + 1
+    if (newRow === null) {
+      newRow = lastRow + 1;
+      Logger.log("No empty cells found, using last row + 1: " + newRow);
+    }
 
     Logger.log("Adding new patient at row: " + newRow);
 
@@ -576,7 +612,7 @@ function addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNa
     const maxColumns = Math.max(rmColumn, patientNameColumn) + 1;
     const newValues = new Array(maxColumns).fill("");
 
-    newValues[rmColumn] = rmNumber;
+    newValues[rmColumn] = rmNumberToSave;  // Save only the number part (xxxx)
     newValues[patientNameColumn] = patientName;
 
     Logger.log("Setting values at row " + newRow + ": RM=" + rmNumber + ", Patient=" + patientName);

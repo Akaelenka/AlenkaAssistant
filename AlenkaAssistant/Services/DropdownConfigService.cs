@@ -18,6 +18,8 @@ namespace AlenkaAssistant.Services
         private string _noRmSpreadsheetId = string.Empty;
         private string _noRmSheetName = "NoRM";
         private string _paperSize = "A4";
+        private int _rmColumn = 0;
+        private int _patientNameColumn = 1;
 
         /// <summary>
         /// Load dropdown configuration from GoogleSheetsConfig.json
@@ -98,6 +100,23 @@ namespace AlenkaAssistant.Services
                         if (!string.IsNullOrWhiteSpace(noRmSheetName))
                         {
                             _noRmSheetName = noRmSheetName;
+                        }
+                    }
+
+                    // Load RM and patient name columns
+                    if (patientLookupElement.TryGetProperty("rmColumn", out var rmColumnElement))
+                    {
+                        if (rmColumnElement.TryGetInt32(out var rmCol))
+                        {
+                            _rmColumn = rmCol;
+                        }
+                    }
+
+                    if (patientLookupElement.TryGetProperty("patientNameColumn", out var patientNameColumnElement))
+                    {
+                        if (patientNameColumnElement.TryGetInt32(out var patientNameCol))
+                        {
+                            _patientNameColumn = patientNameCol;
                         }
                     }
                 }
@@ -199,6 +218,22 @@ namespace AlenkaAssistant.Services
         public string GetNoRmSheetName()
         {
             return _noRmSheetName;
+        }
+
+        /// <summary>
+        /// Get RM column index for NoRM spreadsheet
+        /// </summary>
+        public int GetRmColumn()
+        {
+            return _rmColumn;
+        }
+
+        /// <summary>
+        /// Get patient name column index for NoRM spreadsheet
+        /// </summary>
+        public int GetPatientNameColumn()
+        {
+            return _patientNameColumn;
         }
     }
 }
