@@ -4,7 +4,7 @@
  * DEPLOYMENT INSTRUCTIONS:
  * 1. Create a new Google Apps Script project at https://script.google.com
  * 2. Copy this entire code into the Script Editor
- * 3. Set SPREADSHEET_ID to your default Google Sheet ID (from the URL)
+ * 3. Add your spreadsheet IDs to ALLOWED_SPREADSHEET_IDS below
  * 4. Deploy as a web app: Deploy > New Deployment > Web app
  *    - Execute as: Your Google account
  *    - Who has access: Anyone
@@ -17,6 +17,11 @@
  * - Sheet names are passed dynamically as "sheetName" parameter
  * - If spreadsheetId is not provided, falls back to SPREADSHEET_ID below
  * 
+ * SECURITY:
+ * - Only spreadsheets in ALLOWED_SPREADSHEET_IDS can be accessed
+ * - Unauthorized IDs are rejected with an error response
+ * - To add new spreadsheets, just add their ID to ALLOWED_SPREADSHEET_IDS
+ * 
  * CONFIGURATION IN GoogleSheetsConfig.json:
  * - "spreadsheetId": Main spreadsheet for purchase requests
  * - "noRmSpreadsheetId": Separate spreadsheet for NoRM patient data (optional)
@@ -24,8 +29,25 @@
  * - "sheetName": Sheet name in main spreadsheet (default "2026")
  */
 
-// Configuration - Set this to your default Google Sheet ID (fallback value)
-const SPREADSHEET_ID = "YOUR_SPREADSHEET_ID";
+// SECURITY: Whitelist of allowed spreadsheet IDs
+// To add a new spreadsheet, simply add its ID to this array
+const ALLOWED_SPREADSHEET_IDS = [
+  "YOUR_SPREADSHEET_ID_1",  // Main purchase sheet
+  "YOUR_SPREADSHEET_ID_2"  // NoRM patient sheet
+];
+
+// Configuration - Fallback spreadsheet ID (must be in ALLOWED_SPREADSHEET_IDS)
+const SPREADSHEET_ID = ALLOWED_SPREADSHEET_IDS[0];
+
+/**
+ * Validate that a spreadsheet ID is in the allowed list
+ * @param {string} spreadsheetId - The spreadsheet ID to validate
+ * @returns {boolean} True if allowed, false otherwise
+ */
+function isAllowedSpreadsheet(spreadsheetId) {
+  const idToCheck = spreadsheetId || SPREADSHEET_ID;
+  return ALLOWED_SPREADSHEET_IDS.includes(idToCheck);
+}
 
 /**
  * Handle POST requests for data submission and patient addition
@@ -50,6 +72,14 @@ function doPost(e) {
 
 	Logger.log("Action: " + action);
 	Logger.log("Using spreadsheetId: " + spreadsheetId);
+
+	// SECURITY: Validate spreadsheet ID against whitelist
+	if (!isAllowedSpreadsheet(spreadsheetId)) {
+	  Logger.log("SECURITY ERROR: Spreadsheet ID not in allowed list: " + spreadsheetId);
+	  return ContentService
+		.createTextOutput(JSON.stringify({ success: false, error: "Spreadsheet ID not authorized" }))
+		.setMimeType(ContentService.MimeType.JSON);
+	}
 
 	// Handle patient addition
 	if (action === "addPatient") {
@@ -116,6 +146,14 @@ function doGet(e) {
 
 	Logger.log("doGet - Action: " + action + ", SpreadsheetId: " + spreadsheetId);
 
+	// SECURITY: Validate spreadsheet ID against whitelist
+	if (!isAllowedSpreadsheet(spreadsheetId)) {
+	  Logger.log("SECURITY ERROR: Spreadsheet ID not in allowed list: " + spreadsheetId);
+	  return ContentService
+		.createTextOutput(JSON.stringify({ success: false, error: "Spreadsheet ID not authorized" }))
+		.setMimeType(ContentService.MimeType.JSON);
+	}
+
 	if (action === "lookup") {
 	  const result = lookupPatientData(sheetName, searchColumn, searchValue, resultColumn, spreadsheetId);
 	  return ContentService
@@ -147,6 +185,10 @@ function doGet(e) {
 function lookupPatientData(sheetName, searchColumn, searchValue, resultColumn, spreadsheetId) {
   try {
 	const ssId = spreadsheetId || SPREADSHEET_ID;
+	// SECURITY: Validate spreadsheet ID before accessing
+	if (!isAllowedSpreadsheet(ssId)) {
+	  return { success: false, error: "Spreadsheet ID not authorized" };
+	}
 	const ss = SpreadsheetApp.openById(ssId);
 	const sheet = ss.getSheetByName(sheetName);
 
@@ -209,6 +251,11 @@ function appendToSheet(sheetName, values, appendColumn, spreadsheetId) {
 
 	Logger.log("Opening spreadsheet...");
 	const ssId = spreadsheetId || SPREADSHEET_ID;
+	// SECURITY: Validate spreadsheet ID before accessing
+	if (!isAllowedSpreadsheet(ssId)) {
+	  Logger.log("SECURITY ERROR: Spreadsheet ID not in allowed list: " + ssId);
+	  return { success: false, error: "Spreadsheet ID not authorized" };
+	}
 	const ss = SpreadsheetApp.openById(ssId);
 	Logger.log("Spreadsheet opened successfully");
 
@@ -294,6 +341,11 @@ function getLastRmFromSheet(sheetName, rmColumn, spreadsheetId) {
     Logger.log("RM Column: " + rmColumn);
 
     const ssId = spreadsheetId || SPREADSHEET_ID;
+    // SECURITY: Validate spreadsheet ID before accessing
+    if (!isAllowedSpreadsheet(ssId)) {
+      Logger.log("SECURITY ERROR: Spreadsheet ID not in allowed list: " + ssId);
+      return { success: false, error: "Spreadsheet ID not authorized" };
+    }
     const ss = SpreadsheetApp.openById(ssId);
     const sheet = ss.getSheetByName(sheetName);
 
@@ -368,6 +420,11 @@ function addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNa
     Logger.log("Patient Name Column: " + patientNameColumn);
 
     const ssId = spreadsheetId || SPREADSHEET_ID;
+    // SECURITY: Validate spreadsheet ID before accessing
+    if (!isAllowedSpreadsheet(ssId)) {
+      Logger.log("SECURITY ERROR: Spreadsheet ID not in allowed list: " + ssId);
+      return { success: false, error: "Spreadsheet ID not authorized" };
+    }
     const ss = SpreadsheetApp.openById(ssId);
     const sheet = ss.getSheetByName(sheetName);
 
