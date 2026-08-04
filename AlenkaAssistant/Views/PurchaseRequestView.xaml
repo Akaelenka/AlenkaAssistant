@@ -15,6 +15,7 @@
         <converters:TreatmentTypeToDisplayItemConverter x:Key="TreatmentTypeConverter"/>
         <converters:StringPassThroughConverter x:Key="StringPassThroughConverter"/>
         <converters:MoneyFormatConverter x:Key="MoneyFormatConverter"/>
+        <converters:StatusMessageColorConverter x:Key="StatusMessageColorConverter"/>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -389,9 +390,11 @@
             <!-- Status Message -->
             <TextBlock Text="{Binding StatusMessage}" 
                        Margin="0,0,0,20" 
-                       Foreground="#4CAF50" 
+                       Foreground="{Binding StatusMessage, Converter={StaticResource StatusMessageColorConverter}}"
                        FontSize="12"
-                       TextWrapping="Wrap"/>
+                       TextWrapping="Wrap"
+                       MaxWidth="500"
+                       MinHeight="30"/>
             </StackPanel>
         </ScrollViewer>
 

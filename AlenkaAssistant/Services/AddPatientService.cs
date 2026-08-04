@@ -99,10 +99,24 @@ namespace AlenkaAssistant.Services
 
                 if (!response.IsSuccessStatusCode)
                 {
+                    // Provide specific error messages based on status code
+                    string errorMsg = response.StatusCode switch
+                    {
+                        System.Net.HttpStatusCode.NotFound => 
+                            "Deployment URL not found (404). Please verify: 1) The Google Apps Script deployment URL in GoogleSheetsConfig.json is correct and up-to-date, 2) The deployment hasn't been deleted, 3) Try redeploying the script and updating the URL.",
+                        System.Net.HttpStatusCode.Forbidden => 
+                            "Access forbidden (403). Check if the Google Apps Script deployment allows 'Anyone' access.",
+                        System.Net.HttpStatusCode.BadRequest => 
+                            "Bad request (400). Check if all parameters are valid.",
+                        System.Net.HttpStatusCode.ServiceUnavailable => 
+                            "Google service unavailable (503). Try again in a moment.",
+                        _ => $"HTTP error: {response.StatusCode}"
+                    };
+
                     return new GetLastRmResponse
                     {
                         Success = false,
-                        Error = $"HTTP error: {response.StatusCode}"
+                        Error = errorMsg
                     };
                 }
 
@@ -169,10 +183,24 @@ namespace AlenkaAssistant.Services
 
                 if (!response.IsSuccessStatusCode)
                 {
+                    // Provide specific error messages based on status code
+                    string errorMsg = response.StatusCode switch
+                    {
+                        System.Net.HttpStatusCode.NotFound => 
+                            "Deployment URL not found (404). Please verify: 1) The Google Apps Script deployment URL in GoogleSheetsConfig.json is correct and up-to-date, 2) The deployment hasn't been deleted, 3) Try redeploying the script and updating the URL.",
+                        System.Net.HttpStatusCode.Forbidden => 
+                            "Access forbidden (403). Check if the Google Apps Script deployment allows 'Anyone' access.",
+                        System.Net.HttpStatusCode.BadRequest => 
+                            "Bad request (400). Check if all parameters are valid.",
+                        System.Net.HttpStatusCode.ServiceUnavailable => 
+                            "Google service unavailable (503). Try again in a moment.",
+                        _ => $"HTTP error: {response.StatusCode}"
+                    };
+
                     return new AddPatientResponse
                     {
                         Success = false,
-                        Error = $"HTTP error: {response.StatusCode}"
+                        Error = errorMsg
                     };
                 }
 

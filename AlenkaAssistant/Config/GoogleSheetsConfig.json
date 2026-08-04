@@ -12,13 +12,14 @@
         "date": 3,
         "totalCost": 4,
         "costDetail": 5,
-        "discount": 6,
-        "rmDetail": 7,
+        "itemCount": 6,
+        "discount": 7,
         "rm": 8,
-        "treatmentDescription": 15,
-        "treatmentType": 16,
-        "assistantNames": 17,
-        "doctorName": 18
+        "rmDetail": 9,
+        "treatmentDescription": 16,
+        "treatmentType": 17,
+        "assistantNames": 18,
+        "doctorName": 19
     },
     "assistantNames": [
         "Pavela",

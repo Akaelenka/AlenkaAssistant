@@ -190,9 +190,10 @@ namespace AlenkaAssistant.Services
                             i == 0 ? date : "",
                             i == 0 ? totalCost : "",
                             costItem.Cost.ToString(),
+                            costItem.ItemCount.ToString(),
                             costItem.Discount.ToString(),
-                            i == 0 ? request.UserId : "",
                             rmForSheet,
+                            i == 0 ? request.UserId : "",
                             costItem.TreatmentDesc ?? "",
                             detailTreatmentType,
                             i == 0 ? assistantNames : "",
@@ -213,8 +214,9 @@ namespace AlenkaAssistant.Services
                         totalCost,
                         "",
                         "",
-                        request.UserId,
+                        "",
                         rmForSheet,
+                        request.UserId,
                         request.GeneralTreatmentDesc ?? "",
                         "",
                         assistantNames,
@@ -240,7 +242,22 @@ namespace AlenkaAssistant.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    throw new HttpRequestException($"Failed to append to Google Sheet. Status: {response.StatusCode}. Response: {errorContent}");
+
+                    // Provide specific error messages based on status code
+                    string diagnosticMsg = response.StatusCode switch
+                    {
+                        System.Net.HttpStatusCode.NotFound => 
+                            "Deployment URL not found (404). Please check: 1) Is the deployment URL correct in GoogleSheetsConfig.json? 2) Was the Google Apps Script deployment deleted? 3) Try redeploying the script and update the URL.",
+                        System.Net.HttpStatusCode.Forbidden => 
+                            "Access forbidden (403). Check: 1) Is the deployment set to 'Anyone' in access permissions? 2) Is your Google account authorized?",
+                        System.Net.HttpStatusCode.BadRequest => 
+                            "Bad request (400). Check: 1) Is the request data properly formatted? 2) Are all required parameters included?",
+                        System.Net.HttpStatusCode.ServiceUnavailable => 
+                            "Google service unavailable (503). Try again in a moment.",
+                        _ => $"HTTP Error {response.StatusCode}"
+                    };
+
+                    throw new HttpRequestException($"Google Sheets API Error: {diagnosticMsg}. Details: {errorContent}");
                 }
 
                 var responseContent = await response.Content.ReadAsStringAsync();
@@ -248,12 +265,12 @@ namespace AlenkaAssistant.Services
                 // Check if response is empty or starts with HTML (error)
                 if (string.IsNullOrWhiteSpace(responseContent))
                 {
-                    throw new Exception("Empty response from Google Apps Script");
+                    throw new Exception("Empty response from Google Apps Script. The script may not have returned a valid response.");
                 }
 
                 if (responseContent.StartsWith("<") || responseContent.StartsWith("<!"))
                 {
-                    throw new Exception($"Google Apps Script returned HTML instead of JSON. This usually means the deployment URL is invalid or the script has an error. Response: {responseContent.Substring(0, Math.Min(200, responseContent.Length))}");
+                    throw new Exception($"Google Apps Script returned HTML instead of JSON. This usually means: 1) The deployment URL is incorrect or outdated, 2) The script has a runtime error, 3) The script was deleted. Please redeploy and update the URL in GoogleSheetsConfig.json. Response snippet: {responseContent.Substring(0, Math.Min(100, responseContent.Length))}");
                 }
 
                 var responseObj = JsonSerializer.Deserialize<JsonElement>(responseContent);
@@ -266,13 +283,14 @@ namespace AlenkaAssistant.Services
                 {
                     var errorMsg = responseObj.TryGetProperty("error", out var errorProp) 
                         ? errorProp.GetString() 
-                        : "Unknown error";
-                    throw new Exception($"Google Apps Script returned error: {errorMsg}");
+                        : "Unknown error from Google Apps Script";
+                    throw new Exception($"Google Apps Script Error: {errorMsg}");
                 }
             }
             catch (Exception ex)
             {
-                throw new Exception($"Failed to append purchase request to Google Sheet: {ex.Message}", ex);
+                // Preserve the detailed error message for the UI
+                throw new Exception($"Failed to save to Google Sheets: {ex.Message}", ex);
             }
         }
 
@@ -286,6 +304,7 @@ namespace AlenkaAssistant.Services
             string date,
             string totalCost,
             string costDetail,
+            string itemCount,
             string discount,
             string rm,
             string rmDetail,
@@ -328,6 +347,7 @@ namespace AlenkaAssistant.Services
             SetColumn("date", date);
             SetColumn("totalCost", totalCost);
             SetColumn("costDetail", costDetail);
+            SetColumn("itemCount", itemCount);
             SetColumn("discount", discount);
             SetColumn("rm", rm);
             SetColumn("rmDetail", rmDetail);

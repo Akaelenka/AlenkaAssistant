@@ -32,7 +32,7 @@ namespace AlenkaAssistant.Models
         /// </summary>
         public static string GetDisplayName(TreatmentType treatmentType)
         {
-            return treatmentType.ToString().Replace("_", " / ");
+            return treatmentType.ToString().Replace("_", "/");
         }
 
         /// <summary>

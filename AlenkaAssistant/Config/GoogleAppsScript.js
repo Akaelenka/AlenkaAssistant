@@ -90,11 +90,18 @@ function doPost(e) {
 	  const rmColumn = payload.rmColumn !== undefined ? payload.rmColumn : 0;
 	  const patientNameColumn = payload.patientNameColumn !== undefined ? payload.patientNameColumn : 1;
 
-	  const result = addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNameColumn, spreadsheetId);
-	  Logger.log("=== doPost addPatient SUCCESS ===");
-	  return ContentService
-		.createTextOutput(JSON.stringify(result))
-		.setMimeType(ContentService.MimeType.JSON);
+	  try {
+		const result = addPatientToSheet(sheetName, rmNumber, patientName, rmColumn, patientNameColumn, spreadsheetId);
+		Logger.log("=== doPost addPatient SUCCESS ===");
+		return ContentService
+		  .createTextOutput(JSON.stringify(result))
+		  .setMimeType(ContentService.MimeType.JSON);
+	  } catch (addPatientError) {
+		Logger.log("ERROR in addPatient: " + addPatientError.toString());
+		return ContentService
+		  .createTextOutput(JSON.stringify({ success: false, error: addPatientError.toString() }))
+		  .setMimeType(ContentService.MimeType.JSON);
+	  }
 	}
 
 	// Handle regular data appending
@@ -113,22 +120,56 @@ function doPost(e) {
 	}
 
 	Logger.log("Calling appendToSheet...");
-	const result = appendToSheet(sheetName, payload.values, appendColumn, spreadsheetId);
+
+	// Sanitize values: ensure all cells are strings and safe to append
+	const sanitizedValues = payload.values.map(row => {
+	  return row.map(cell => {
+		if (cell === null || cell === undefined) {
+		  return "";
+		}
+		return String(cell);
+	  });
+	});
+
+	Logger.log("Values sanitized. First row: " + JSON.stringify(sanitizedValues[0]));
+
+	const result = appendToSheet(sheetName, sanitizedValues, appendColumn, spreadsheetId);
 	Logger.log("appendToSheet completed successfully");
 
 	Logger.log("=== doPost SUCCESS ===");
-	return ContentService
-	  .createTextOutput(JSON.stringify({ success: true, message: "Data appended successfully", result: result }))
-	  .setMimeType(ContentService.MimeType.JSON);
+	try {
+	  const responseObj = {
+		success: true,
+		message: "Data appended successfully",
+		appendedRows: result.appendedRows || 0,
+		startRow: result.startRow || 0,
+		sheetName: result.sheetName || sheetName
+	  };
+	  return ContentService
+		.createTextOutput(JSON.stringify(responseObj))
+		.setMimeType(ContentService.MimeType.JSON);
+	} catch (responseError) {
+	  Logger.log("ERROR creating response: " + responseError.toString());
+	  return ContentService
+		.createTextOutput(JSON.stringify({ success: true, message: "Data appended but error creating response" }))
+		.setMimeType(ContentService.MimeType.JSON);
+	}
   } catch (error) {
 	Logger.log("=== doPost ERROR ===");
 	Logger.log("Error type: " + error.name);
 	Logger.log("Error message: " + error.toString());
 	Logger.log("Stack: " + error.stack);
 
-	return ContentService
-	  .createTextOutput(JSON.stringify({ success: false, error: error.toString(), errorName: error.name }))
-	  .setMimeType(ContentService.MimeType.JSON);
+	try {
+	  return ContentService
+		.createTextOutput(JSON.stringify({ success: false, error: error.toString(), errorName: error.name }))
+		.setMimeType(ContentService.MimeType.JSON);
+	} catch (responseError) {
+	  Logger.log("ERROR creating error response: " + responseError.toString());
+	  return ContentService
+		.createTextOutput(JSON.stringify({ success: false, error: "An error occurred" }))
+		.setMimeType(ContentService.MimeType.JSON);
+	}
   }
 }
 
@@ -159,24 +200,45 @@ function doGet(e) {
 	}
 
 	if (action === "lookup") {
-	  const result = lookupPatientData(sheetName, searchColumn, searchValue, resultColumn, spreadsheetId);
-	  return ContentService
-		.createTextOutput(JSON.stringify(result))
-		.setMimeType(ContentService.MimeType.JSON);
+	  try {
+		const result = lookupPatientData(sheetName, searchColumn, searchValue, resultColumn, spreadsheetId);
+		return ContentService
+		  .createTextOutput(JSON.stringify(result))
+		  .setMimeType(ContentService.MimeType.JSON);
+	  } catch (lookupError) {
+		Logger.log("ERROR in lookup: " + lookupError.toString());
+		return ContentService
+		  .createTextOutput(JSON.stringify({ success: false, error: lookupError.toString() }))
+		  .setMimeType(ContentService.MimeType.JSON);
+	  }
 	}
 
 	if (action === "getLastRm") {
-	  const result = getLastRmFromSheet(sheetName, rmColumn, patientNameColumn, spreadsheetId);
-	  return ContentService
-		.createTextOutput(JSON.stringify(result))
-		.setMimeType(ContentService.MimeType.JSON);
+	  try {
+		const result = getLastRmFromSheet(sheetName, rmColumn, patientNameColumn, spreadsheetId);
+		return ContentService
+		  .createTextOutput(JSON.stringify(result))
+		  .setMimeType(ContentService.MimeType.JSON);
+	  } catch (rmError) {
+		Logger.log("ERROR in getLastRm: " + rmError.toString());
+		return ContentService
+		  .createTextOutput(JSON.stringify({ success: false, error: rmError.toString() }))
+		  .setMimeType(ContentService.MimeType.JSON);
+	  }
 	}
 
 	if (action === "addPatient") {
-	  const result = addPatientToSheet(sheetName, rm, patientName, rmColumn, patientNameColumn, spreadsheetId);
-	  return ContentService
-		.createTextOutput(JSON.stringify(result))
-		.setMimeType(ContentService.MimeType.JSON);
+	  try {
+		const result = addPatientToSheet(sheetName, rm, patientName, rmColumn, patientNameColumn, spreadsheetId);
+		return ContentService
+		  .createTextOutput(JSON.stringify(result))
+		  .setMimeType(ContentService.MimeType.JSON);
+	  } catch (addPatientError) {
+		Logger.log("ERROR in addPatient (doGet): " + addPatientError.toString());
+		return ContentService
+		  .createTextOutput(JSON.stringify({ success: false, error: addPatientError.toString() }))
+		  .setMimeType(ContentService.MimeType.JSON);
+	  }
 	}
 
 	return ContentService
@@ -184,9 +246,16 @@ function doGet(e) {
 	  .setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
 	Logger.log("Error in doGet: " + error.toString());
-	return ContentService
-	  .createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
-	  .setMimeType(ContentService.MimeType.JSON);
+	try {
+	  return ContentService
+		.createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
+		.setMimeType(ContentService.MimeType.JSON);
+	} catch (responseError) {
+	  Logger.log("ERROR creating error response in doGet: " + responseError.toString());
+	  return ContentService
+		.createTextOutput(JSON.stringify({ success: false, error: "An error occurred" }))
+		.setMimeType(ContentService.MimeType.JSON);
+	}
   }
 }
 
@@ -321,23 +390,48 @@ function appendToSheet(sheetName, values, appendColumn, spreadsheetId) {
 	Logger.log("Number of columns: " + numCols);
 	Logger.log("Setting values...");
 
-	const range = sheet.getRange(startRow, 1, values.length, numCols);
-	range.setValues(values);
+	// Log first row to see what we're trying to set
+	Logger.log("First row values: " + JSON.stringify(values[0]));
+
+	try {
+	  const range = sheet.getRange(startRow, 1, values.length, numCols);
+	  range.setValues(values);
+	} catch (setValuesError) {
+	  Logger.log("ERROR in setValues: " + setValuesError.toString());
+	  Logger.log("Error name: " + setValuesError.name);
+	  Logger.log("Error message: " + setValuesError.message);
+	  throw new Error("Failed to set values in sheet: " + setValuesError.toString());
+	}
 
 	Logger.log("Values set successfully");
 	Logger.log("=== appendToSheet SUCCESS ===");
 
-	return {
-	  appendedRows: values.length,
-	  startRow: startRow,
-	  sheetName: sheetName,
-	  columnsAppended: numCols
+	const safeResult = {
+	  appendedRows: parseInt(values.length) || 0,
+	  startRow: parseInt(startRow) || 0,
+	  sheetName: String(sheetName || ""),
+	  columnsAppended: parseInt(numCols) || 0
 	};
+
+	Logger.log("Returning result: appendedRows=" + safeResult.appendedRows + ", startRow=" + safeResult.startRow);
+	return safeResult;
   } catch (error) {
 	Logger.log("=== appendToSheet ERROR ===");
 	Logger.log("Error type: " + error.name);
 	Logger.log("Error message: " + error.toString());
 	Logger.log("Stack: " + error.stack);
+
+	// Try to get more details about what value caused the error
+	Logger.log("Number of values: " + (values ? values.length : "undefined"));
+	if (values && values.length > 0) {
+	  Logger.log("First row length: " + values[0].length);
+	  try {
+		Logger.log("First row: " + JSON.stringify(values[0]));
+	  } catch (logError) {
+		Logger.log("Could not stringify first row: " + logError.toString());
+	  }
+	}
+
 	throw error;
   }
 }
