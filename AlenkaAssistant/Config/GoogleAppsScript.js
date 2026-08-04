@@ -280,8 +280,18 @@ function lookupPatientData(sheetName, searchColumn, searchValue, resultColumn, s
 	  return { success: false, error: "Search value is empty" };
 	}
 
+	const lastRow = sheet.getLastRow();
+	if (lastRow < 2) {
+	  return {
+		success: true,
+		found: false,
+		error: "Patient not found"
+	  };
+	}
+
 	const columnLetter = String.fromCharCode(65 + searchColumn);
-	const columnData = sheet.getRange(columnLetter + ":" + columnLetter).getValues();
+	// Only read data rows, not entire column (much faster!)
+	const columnData = sheet.getRange(columnLetter + "1:" + columnLetter + lastRow).getValues();
 
 	// Search for matching RM with zero-padding support
 	for (let i = 0; i < columnData.length; i++) {
@@ -314,7 +324,7 @@ function lookupPatientData(sheetName, searchColumn, searchValue, resultColumn, s
 	  error: "Patient not found"
 	};
   } catch (error) {
-	Logger.log("Error in lookupPatientData: " + error.toString());
+	Logger.log("ERROR in lookupPatientData: " + error.toString());
 	return { success: false, error: error.toString() };
   }
 }
@@ -444,33 +454,22 @@ function appendToSheet(sheetName, values, appendColumn, spreadsheetId) {
  */
 function getLastRmFromSheet(sheetName, rmColumn, patientNameColumn, spreadsheetId) {
   try {
-    Logger.log("=== getLastRmFromSheet START ===");
-    Logger.log("Sheet Name: " + sheetName);
-    Logger.log("RM Column: " + rmColumn);
-    Logger.log("Patient Name Column: " + patientNameColumn);
-
     const ssId = spreadsheetId || SPREADSHEET_ID;
     // SECURITY: Validate spreadsheet ID before accessing
     if (!isAllowedSpreadsheet(ssId)) {
-      Logger.log("SECURITY ERROR: Spreadsheet ID not in allowed list: " + ssId);
       return { success: false, error: "Spreadsheet ID not authorized" };
     }
     const ss = SpreadsheetApp.openById(ssId);
     const sheet = ss.getSheetByName(sheetName);
 
     if (!sheet) {
-      Logger.log("ERROR: Sheet not found - " + sheetName);
       return { success: false, error: "Sheet not found: " + sheetName };
     }
 
     const columnLetter = String.fromCharCode(65 + rmColumn);
-    Logger.log("Column letter: " + columnLetter);
-
     const lastRow = sheet.getLastRow();
-    Logger.log("Last row from sheet.getLastRow(): " + lastRow);
 
     if (lastRow < 2) {
-      Logger.log("No data found in sheet");
       return { 
         success: true, 
         lastRm: null,
@@ -484,33 +483,27 @@ function getLastRmFromSheet(sheetName, rmColumn, patientNameColumn, spreadsheetI
     const rmRange = sheet.getRange(columnLetter + "2:" + columnLetter + lastRow);
     const rmValues = rmRange.getValues();
 
-    Logger.log("Total rows fetched: " + rmValues.length);
     let lastRm = null;
     let lastValidIndex = -1;
 
     // Scan from top to bottom to find the last continuous data (before empty rows)
     for (let i = 0; i < rmValues.length; i++) {
       const rmValue = String(rmValues[i][0]).trim();
-      const actualRowNum = i + 2;
 
       if (rmValue.length > 0) {
         // Found a non-empty RM, remember it as the last valid one so far
         lastRm = rmValue;
         lastValidIndex = i;
-        Logger.log("Row " + actualRowNum + ": RM='" + rmValue + "' (valid)");
       } else {
         // Found empty cell
-        Logger.log("Row " + actualRowNum + ": RM is EMPTY");
         // If we've found valid data before, and now hit empty, stop here
         if (lastValidIndex >= 0) {
-          Logger.log("Found empty row after valid data. Last valid RM: " + lastRm + " at row " + (lastValidIndex + 2));
           break;
         }
       }
     }
 
     if (!lastRm) {
-      Logger.log("No RM values found");
       return { 
         success: true, 
         lastRm: null,
@@ -522,9 +515,7 @@ function getLastRmFromSheet(sheetName, rmColumn, patientNameColumn, spreadsheetI
 
     // Increment the last RM found
     const nextRm = incrementRmNumber(lastRm);
-    Logger.log("Last RM: " + lastRm + ", Next RM: " + nextRm);
 
-    Logger.log("=== getLastRmFromSheet SUCCESS ===");
     return {
       success: true,
       lastRm: lastRm,
@@ -532,8 +523,7 @@ function getLastRmFromSheet(sheetName, rmColumn, patientNameColumn, spreadsheetI
       lastRow: lastRow
     };
   } catch (error) {
-    Logger.log("=== getLastRmFromSheet ERROR ===");
-    Logger.log("Error: " + error.toString());
+    Logger.log("ERROR in getLastRmFromSheet: " + error.toString());
     return { success: false, error: error.toString() };
   }
 }
