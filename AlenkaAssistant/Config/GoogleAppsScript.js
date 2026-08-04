@@ -143,6 +143,9 @@ function doGet(e) {
 	const rmColumn = parseInt(e.parameter.rmColumn || searchColumn);  // rmColumn defaults to searchColumn
 	const searchValue = (e.parameter.searchValue || "").trim();
 	const resultColumn = parseInt(e.parameter.resultColumn || 1);
+	const rm = (e.parameter.rm || "").trim();
+	const patientName = (e.parameter.patientName || "").trim();
+	const patientNameColumn = parseInt(e.parameter.patientNameColumn || 1);
 	const spreadsheetId = e.parameter.spreadsheetId || SPREADSHEET_ID;
 
 	Logger.log("doGet - Action: " + action + ", SpreadsheetId: " + spreadsheetId);
@@ -163,7 +166,14 @@ function doGet(e) {
 	}
 
 	if (action === "getLastRm") {
-	  const result = getLastRmFromSheet(sheetName, rmColumn, spreadsheetId);
+	  const result = getLastRmFromSheet(sheetName, rmColumn, patientNameColumn, spreadsheetId);
+	  return ContentService
+		.createTextOutput(JSON.stringify(result))
+		.setMimeType(ContentService.MimeType.JSON);
+	}
+
+	if (action === "addPatient") {
+	  const result = addPatientToSheet(sheetName, rm, patientName, rmColumn, patientNameColumn, spreadsheetId);
 	  return ContentService
 		.createTextOutput(JSON.stringify(result))
 		.setMimeType(ContentService.MimeType.JSON);
@@ -335,11 +345,12 @@ function appendToSheet(sheetName, values, appendColumn, spreadsheetId) {
 /**
  * Get the last RM number from a sheet
  */
-function getLastRmFromSheet(sheetName, rmColumn, spreadsheetId) {
+function getLastRmFromSheet(sheetName, rmColumn, patientNameColumn, spreadsheetId) {
   try {
     Logger.log("=== getLastRmFromSheet START ===");
     Logger.log("Sheet Name: " + sheetName);
     Logger.log("RM Column: " + rmColumn);
+    Logger.log("Patient Name Column: " + patientNameColumn);
 
     const ssId = spreadsheetId || SPREADSHEET_ID;
     // SECURITY: Validate spreadsheet ID before accessing
@@ -359,7 +370,7 @@ function getLastRmFromSheet(sheetName, rmColumn, spreadsheetId) {
     Logger.log("Column letter: " + columnLetter);
 
     const lastRow = sheet.getLastRow();
-    Logger.log("Last row: " + lastRow);
+    Logger.log("Last row from sheet.getLastRow(): " + lastRow);
 
     if (lastRow < 2) {
       Logger.log("No data found in sheet");
@@ -372,17 +383,32 @@ function getLastRmFromSheet(sheetName, rmColumn, spreadsheetId) {
       };
     }
 
-    // Get the last non-empty RM value in the column
-    const columnData = sheet.getRange(columnLetter + ":" + columnLetter).getValues();
-    let lastRm = null;
+    // Get the RM column values
+    const rmRange = sheet.getRange(columnLetter + "2:" + columnLetter + lastRow);
+    const rmValues = rmRange.getValues();
 
-    // Scan from bottom to find the last non-empty RM
-    for (let i = columnData.length - 1; i >= 1; i--) {
-      const cellValue = String(columnData[i][0]).trim();
-      if (cellValue && cellValue.length > 0) {
-        lastRm = cellValue;
-        Logger.log("Found last RM at row " + (i + 1) + ": " + lastRm);
-        break;
+    Logger.log("Total rows fetched: " + rmValues.length);
+    let lastRm = null;
+    let lastValidIndex = -1;
+
+    // Scan from top to bottom to find the last continuous data (before empty rows)
+    for (let i = 0; i < rmValues.length; i++) {
+      const rmValue = String(rmValues[i][0]).trim();
+      const actualRowNum = i + 2;
+
+      if (rmValue.length > 0) {
+        // Found a non-empty RM, remember it as the last valid one so far
+        lastRm = rmValue;
+        lastValidIndex = i;
+        Logger.log("Row " + actualRowNum + ": RM='" + rmValue + "' (valid)");
+      } else {
+        // Found empty cell
+        Logger.log("Row " + actualRowNum + ": RM is EMPTY");
+        // If we've found valid data before, and now hit empty, stop here
+        if (lastValidIndex >= 0) {
+          Logger.log("Found empty row after valid data. Last valid RM: " + lastRm + " at row " + (lastValidIndex + 2));
+          break;
+        }
       }
     }
 
@@ -397,7 +423,7 @@ function getLastRmFromSheet(sheetName, rmColumn, spreadsheetId) {
       };
     }
 
-    // Calculate next RM by incrementing the last one
+    // Increment the last RM found
     const nextRm = incrementRmNumber(lastRm);
     Logger.log("Last RM: " + lastRm + ", Next RM: " + nextRm);
 

@@ -13,9 +13,12 @@ namespace AlenkaAssistant.ViewModels
         private string _patientName;
         private string _rmSuggestion;
         private bool _isLoadingLastRm;
+        private bool _isSavingPatient;
         private string _errorMessage;
         private bool _hasError;
         private bool _canConfirm;
+        private string _successMessage;
+        private bool _hasSuccess;
 
         private readonly AddPatientService _addPatientService;
         private readonly AddPatientDialog _dialog;
@@ -74,6 +77,19 @@ namespace AlenkaAssistant.ViewModels
             }
         }
 
+        public bool IsSavingPatient
+        {
+            get => _isSavingPatient;
+            set
+            {
+                if (_isSavingPatient != value)
+                {
+                    _isSavingPatient = value;
+                    OnPropertyChanged(nameof(IsSavingPatient));
+                }
+            }
+        }
+
         public string ErrorMessage
         {
             get => _errorMessage;
@@ -100,6 +116,32 @@ namespace AlenkaAssistant.ViewModels
             }
         }
 
+        public string SuccessMessage
+        {
+            get => _successMessage;
+            set
+            {
+                if (_successMessage != value)
+                {
+                    _successMessage = value;
+                    OnPropertyChanged(nameof(SuccessMessage));
+                }
+            }
+        }
+
+        public bool HasSuccess
+        {
+            get => _hasSuccess;
+            set
+            {
+                if (_hasSuccess != value)
+                {
+                    _hasSuccess = value;
+                    OnPropertyChanged(nameof(HasSuccess));
+                }
+            }
+        }
+
         public bool CanConfirm
         {
             get => _canConfirm;
@@ -121,7 +163,7 @@ namespace AlenkaAssistant.ViewModels
             _dialog = dialog;
             _addPatientService = addPatientService;
 
-            ConfirmCommand = new RelayCommand(_ => Confirm());
+            ConfirmCommand = new RelayCommand(_ => ConfirmAsync(), _ => CanConfirm && !IsSavingPatient);
             CancelCommand = new RelayCommand(_ => Cancel());
 
             // Load the last RM number
@@ -173,20 +215,58 @@ namespace AlenkaAssistant.ViewModels
         private void UpdateCanConfirm()
         {
             CanConfirm = !IsLoadingLastRm 
+                && !IsSavingPatient
                 && !string.IsNullOrWhiteSpace(RmNumber) 
                 && !string.IsNullOrWhiteSpace(PatientName);
         }
 
-        private void Confirm()
+        private async void ConfirmAsync()
         {
             if (!CanConfirm)
                 return;
 
-            _dialog.RmNumber = RmNumber;
-            _dialog.PatientName = PatientName;
-            _dialog.Confirmed = true;
-            _dialog.DialogResult = true;
-            _dialog.Close();
+            IsSavingPatient = true;
+            HasError = false;
+            HasSuccess = false;
+            ErrorMessage = "";
+            SuccessMessage = "";
+
+            try
+            {
+                // Call the service to add patient to the sheet
+                var response = await _addPatientService.AddPatientAsync(RmNumber, PatientName);
+
+                if (response.Success)
+                {
+                    HasSuccess = true;
+                    SuccessMessage = $"✓ Pasien berhasil disimpan! RM: {RmNumber}, Nama: {PatientName}";
+
+                    // Set dialog result
+                    _dialog.RmNumber = RmNumber;
+                    _dialog.PatientName = PatientName;
+                    _dialog.Confirmed = true;
+                    _dialog.DialogResult = true;
+
+                    // Close after brief delay to show success message
+                    await System.Threading.Tasks.Task.Delay(1000);
+                    _dialog.Close();
+                }
+                else
+                {
+                    HasError = true;
+                    ErrorMessage = $"⚠ Gagal menyimpan pasien: {response.Error}";
+                }
+            }
+            catch (Exception ex)
+            {
+                HasError = true;
+                ErrorMessage = $"⚠ Error saat menyimpan: {ex.Message}";
+            }
+            finally
+            {
+                IsSavingPatient = false;
+                UpdateCanConfirm();
+            }
         }
 
         private void Cancel()

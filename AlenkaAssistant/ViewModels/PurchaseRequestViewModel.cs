@@ -674,11 +674,11 @@ namespace AlenkaAssistant.ViewModels
 
                 if (result == true && dialog.Confirmed)
                 {
-                    // User confirmed adding a new patient
+                    // User confirmed adding a new patient - it's already been saved to the sheet
                     Uid = dialog.RmNumber;
                     PatientName = dialog.PatientName;
-                    StatusMessage = $"✓ Pasien baru: {dialog.PatientName} ({dialog.RmNumber}) akan disimpan saat mengirim.";
-                    System.Diagnostics.Debug.WriteLine($"[ViewModel] New patient created: RM={dialog.RmNumber}, Name={dialog.PatientName}");
+                    StatusMessage = $"✓ Pasien baru berhasil disimpan: {dialog.PatientName} ({dialog.RmNumber})";
+                    System.Diagnostics.Debug.WriteLine($"[ViewModel] New patient created and saved: RM={dialog.RmNumber}, Name={dialog.PatientName}");
                 }
             }
             catch (Exception ex)

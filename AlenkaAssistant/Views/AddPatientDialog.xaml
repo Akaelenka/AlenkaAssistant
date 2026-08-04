@@ -20,7 +20,6 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Title -->
@@ -31,7 +30,7 @@
                    Foreground="#333333"
                    Margin="0,0,0,20"/>
 
-        <!-- Loading Indicator -->
+        <!-- Loading Indicator for Last RM -->
         <StackPanel Grid.Row="1" Visibility="{Binding IsLoadingLastRm, Converter={StaticResource BoolToVisibilityConverter}}">
             <TextBlock Text="🔄 Mengambil nomor RM terakhir..."
                        FontSize="12"
@@ -39,8 +38,17 @@
                        Margin="0,0,0,15"/>
         </StackPanel>
 
+        <!-- Success Message -->
+        <TextBlock Grid.Row="1"
+                   Text="{Binding SuccessMessage}"
+                   FontSize="12"
+                   Foreground="#28A745"
+                   TextWrapping="Wrap"
+                   Visibility="{Binding HasSuccess, Converter={StaticResource BoolToVisibilityConverter}}"
+                   Margin="0,0,0,15"/>
+
         <!-- Error Message -->
-        <TextBlock Grid.Row="2"
+        <TextBlock Grid.Row="1"
                    Text="{Binding ErrorMessage}"
                    FontSize="12"
                    Foreground="#D9534F"
@@ -49,7 +57,7 @@
                    Margin="0,0,0,15"/>
 
         <!-- RM Number Section -->
-        <StackPanel Grid.Row="3" Margin="0,0,0,15">
+        <StackPanel Grid.Row="2" Margin="0,0,0,15">
             <TextBlock Text="Nomor RM"
                        FontSize="12"
                        FontWeight="SemiBold"
@@ -72,7 +80,7 @@
         </StackPanel>
 
         <!-- Patient Name Section -->
-        <StackPanel Grid.Row="4" Margin="0,0,0,20">
+        <StackPanel Grid.Row="3" Margin="0,0,0,20">
             <TextBlock Text="Nama Pasien"
                        FontSize="12"
                        FontWeight="SemiBold"
@@ -85,20 +93,35 @@
                      Background="White"
                      BorderThickness="1"
                      BorderBrush="#CCCCCC"
-                     IsReadOnly="{Binding IsLoadingLastRm}"
+                     IsReadOnly="{Binding IsSavingPatient}"
                      Foreground="#555555"/>
         </StackPanel>
 
-        <!-- Info Message -->
-        <TextBlock Grid.Row="5"
-                   Text="⚠ Pasien akan disimpan ke sheet saat Anda mengklik Print atau Kirim ke Google Sheets."
+        <!-- Saving Indicator -->
+        <StackPanel Grid.Row="4" 
+                    Visibility="{Binding IsSavingPatient, Converter={StaticResource BoolToVisibilityConverter}}"
+                    Margin="0,0,0,20">
+            <TextBlock Text="💾 Menyimpan pasien ke sheet..."
+                       FontSize="11"
+                       Foreground="#0066CC"/>
+        </StackPanel>
+
+        <!-- Info Message (shown when not saving) -->
+        <TextBlock Grid.Row="4"
+                   Text="ℹ Pasien akan langsung disimpan ke sheet saat Anda klik tombol Simpan."
                    FontSize="11"
                    Foreground="#FF6F00"
                    TextWrapping="Wrap"
-                   Margin="0,0,0,20"/>
+                   Margin="0,0,0,20">
+            <TextBlock.Visibility>
+                <Binding Path="IsSavingPatient" Converter="{StaticResource BoolToVisibilityConverter}">
+                    <Binding.ConverterParameter>true</Binding.ConverterParameter>
+                </Binding>
+            </TextBlock.Visibility>
+        </TextBlock>
 
         <!-- Action Buttons -->
-        <StackPanel Grid.Row="6" 
+        <StackPanel Grid.Row="5" 
                     Orientation="Horizontal" 
                     HorizontalAlignment="Right"
                     Margin="0,0,0,0">
@@ -120,8 +143,7 @@
                     Foreground="White"
                     FontSize="12"
                     FontWeight="SemiBold"
-                    Cursor="Hand"
-                    IsEnabled="{Binding CanConfirm}"/>
+                    Cursor="Hand"/>
         </StackPanel>
     </Grid>
 </Window>
