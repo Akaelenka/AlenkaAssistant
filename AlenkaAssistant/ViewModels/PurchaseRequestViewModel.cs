@@ -401,7 +401,7 @@ namespace AlenkaAssistant.ViewModels
                 System.Diagnostics.Debug.WriteLine($"[ViewModel] Looking up patient with RM: {rmNumber} (search value: {searchValue})");
 
                 var result = await _patientLookupService.LookupPatientAsync(
-                    sheetName: "NoRM",
+                    sheetName: null,  // Use configured NoRM sheet name
                     rmNumber: searchValue,
                     searchColumn: 0,  // Column A
                     resultColumn: 1   // Column B
@@ -629,8 +629,8 @@ namespace AlenkaAssistant.ViewModels
 
         private void CostItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            // Update total cost whenever a cost item's Cost, Discount, or TreatmentDesc property changes
-            if (e.PropertyName == nameof(CostModel.Cost) || e.PropertyName == nameof(CostModel.TreatmentDesc) || e.PropertyName == nameof(CostModel.Discount))
+            // Update total cost whenever a cost item's Cost, ItemCount, Discount, or TreatmentDesc property changes
+            if (e.PropertyName == nameof(CostModel.Cost) || e.PropertyName == nameof(CostModel.ItemCount) || e.PropertyName == nameof(CostModel.TreatmentDesc) || e.PropertyName == nameof(CostModel.Discount))
             {
                 OnPropertyChanged(nameof(TotalCost));
             }
